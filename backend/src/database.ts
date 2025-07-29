@@ -105,9 +105,11 @@ const grantGiftToUser = async (userId: number, giftId: number) => {
 
 const getUserGifts = async (userId: number) => {
   const queryText = `
+    -- Выбираем только те подарки, которые еще не были поставлены в рулетку
     SELECT ug.id as user_gift_id, g.id, g.name, g.description, g.price_ton FROM user_gifts ug
     JOIN gifts g ON ug.gift_id = g.id
-    WHERE ug.user_id = $1;
+    LEFT JOIN roulette_bets rb ON ug.id = rb.user_gift_id
+    WHERE ug.user_id = $1 AND rb.id IS NULL;
   `;
   const result = await pool.query(queryText, [userId]);
   return result.rows;
@@ -149,6 +151,22 @@ const placeBet = async (roundId: number, userGiftId: number, userId: number) => 
   await pool.query(queryText, [roundId, userGiftId, userId]);
 };
 
+const getBetsForRound = async (roundId: number) => {
+    const queryText = `
+        SELECT 
+            rb.user_id,
+            u.username,
+            g.price_ton
+        FROM roulette_bets rb
+        JOIN user_gifts ug ON rb.user_gift_id = ug.id
+        JOIN gifts g ON ug.gift_id = g.id
+        JOIN users u ON rb.user_id = u.id
+        WHERE rb.round_id = $1;
+    `;
+    const result = await pool.query(queryText, [roundId]);
+    return result.rows;
+};
+
 
 // Экспортируем все наши функции
 export { 
@@ -165,5 +183,6 @@ export {
     createRoundsTable,
     createBetsTable,
     getCurrentRound,
-    placeBet
+    placeBet,
+    getBetsForRound
 };

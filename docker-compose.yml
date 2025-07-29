@@ -10,10 +10,10 @@ services:
       POSTGRES_DB: roulette_game
       POSTGRES_USER: roulette_user
       POSTGRES_PASSWORD: my_super_secret_password # Замените на надежный пароль
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+# volumes:
+    #   - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432" # Пробрасываем порт для удобства подключения извне, если нужно
+      - "5433:5432" # Используем порт 5433 чтобы не конфликтовать с локальным PostgreSQL
 
   # 2. Сервис Бэкенда
   backend:
@@ -46,5 +46,5 @@ services:
     depends_on:
       - backend
 
-volumes:
-  postgres_data: 
+# volumes:
+  #   postgres_data: 

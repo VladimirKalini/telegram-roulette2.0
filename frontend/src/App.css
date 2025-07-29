@@ -145,3 +145,79 @@ h1 {
     transform: translateY(-5px) scale(1.05);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
+/* ... (все предыдущие стили) */
+
+.roulette-container {
+  margin: 20px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+.roulette-wheel {
+  width: 250px;
+  height: 250px;
+  border-radius: 50%;
+  position: relative;
+  transition: background 0.5s ease;
+  border: 5px solid var(--tg-theme-hint-color, #ccc);
+}
+
+.roulette-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  background-color: var(--tg-theme-bg-color, #f0f2f5);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  box-shadow: 0 0 10px rgba(0,0,0,0.2);
+}
+
+.roulette-center span {
+  font-size: 1.8rem;
+}
+.roulette-center small {
+  font-size: 0.9rem;
+  color: var(--tg-theme-hint-color, #65676b);
+}
+
+.roulette-legend {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+}
+
+.roulette-legend li {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.legend-color {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  margin-right: 8px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.bet-card {
+    cursor: pointer;
+}
+
+.bet-card:hover {
+    transform: translateY(-5px) scale(1.05);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
