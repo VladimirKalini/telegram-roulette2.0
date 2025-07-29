@@ -1,0 +1,95 @@
+/* Используем переменные, которые предоставляет Telegram Mini App */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  margin: 0;
+  background-color: var(--tg-theme-bg-color, #f0f2f5);
+  color: var(--tg-theme-text-color, #1c1e21);
+  display: flex;
+  justify-content: center;
+  padding: 15px;
+  box-sizing: border-box;
+}
+
+.container {
+  width: 100%;
+  max-width: 900px;
+  text-align: center;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+h1 {
+  color: var(--tg-theme-link-color, #1877f2);
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.status-message {
+  background-color: var(--tg-theme-secondary-bg-color, #e7f3ff);
+  color: var(--tg-theme-text-color, #1c1e21);
+  padding: 10px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.gift-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 15px;
+}
+
+.gift-card {
+  background-color: var(--tg-theme-secondary-bg-color, #fff);
+  border-radius: 12px;
+  padding: 15px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.2s ease-in-out;
+}
+
+.gift-card:hover {
+    transform: translateY(-5px);
+}
+
+.gift-card h2 {
+  font-size: 1rem;
+  margin: 0 0 8px 0;
+  color: var(--tg-theme-text-color, #1c1e21);
+}
+
+.gift-card p {
+  font-size: 0.85rem;
+  color: var(--tg-theme-hint-color, #65676b);
+  flex-grow: 1;
+  margin-bottom: 12px;
+}
+
+.price-tag {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--tg-theme-text-color, #333);
+  margin: 10px 0;
+}
+
+.buy-button {
+  background-color: var(--tg-theme-button-color, #1877f2);
+  color: var(--tg-theme-button-text-color, white);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 15px;
+  width: 100%;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.buy-button:hover {
+  opacity: 0.85;
+}

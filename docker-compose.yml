@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # 1. Сервис Базы Данных
+  db:
+    image: postgres:15
+    container_name: roulette_db
+    restart: always
+    environment:
+      POSTGRES_DB: roulette_game
+      POSTGRES_USER: roulette_user
+      POSTGRES_PASSWORD: my_super_secret_password # Замените на надежный пароль
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # Пробрасываем порт для удобства подключения извне, если нужно
+
+  # 2. Сервис Бэкенда
+  backend:
+    container_name: roulette_backend
+    build:
+      context: ./backend # Указываем путь к папке бэкенда
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - db # Бэкенд запустится только после старта базы данных
+    environment:
+      DB_USER: roulette_user
+      DB_HOST: db # Вместо localhost используем имя сервиса
+      DB_DATABASE: roulette_game
+      DB_PASSWORD: my_super_secret_password # Пароль должен совпадать с тем, что у db
+      DB_PORT: 5432
+      PORT: 3000
+    ports:
+      - "3000:3000"
+
+  # 3. Сервис Фронтенда и Веб-сервера Nginx
+  nginx:
+    container_name: roulette_nginx
+    build:
+      context: . # Собираем из корневой папки
+      dockerfile: Dockerfile.nginx
+    restart: always
+    ports:
+      - "80:80" # Публикуем 80 порт для доступа из интернета
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data: 
