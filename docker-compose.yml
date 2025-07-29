@@ -43,10 +43,6 @@ services:
     restart: always
     ports:
       - "80:80" # HTTP порт
-      - "443:443" # HTTPS порт
-    volumes:
-      - /etc/letsencrypt/live/v416113.hosted-by-vdstna.com/fullchain.pem:/etc/ssl/certs/fullchain.pem:ro
-      - /etc/letsencrypt/live/v416113.hosted-by-vdstna.com/privkey.pem:/etc/ssl/private/privkey.pem:ro
     depends_on:
       - backend
 
