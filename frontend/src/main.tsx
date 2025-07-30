@@ -4,8 +4,8 @@ import App from './App.tsx'
 import './index.css'
 import { TonConnectUIProvider } from '@tonconnect/ui-react';
 
-// URL манифеста, который мы создали ранее
-const manifestUrl = 'https://70d7adef08c1.ngrok-free.app/tonconnect-manifest.json';
+// URL манифеста для продакшена
+const manifestUrl = 'https://testsabc.top/tonconnect-manifest.json';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
