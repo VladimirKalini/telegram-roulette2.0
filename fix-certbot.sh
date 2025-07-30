@@ -1,19 +1,20 @@
 #!/bin/bash
+set -e
 
 echo "Fixing Certbot lock issues..."
 
 # Stop all containers to clear any running certbot processes
-docker-compose down
+docker-compose down || true
 
 # Remove any stale certbot containers
 docker container prune -f
 
 # Remove certbot lock files if they exist
-sudo rm -rf /var/lib/letsencrypt/.certbot.lock 2>/dev/null || true
-sudo rm -rf /tmp/.certbot.lock 2>/dev/null || true
+rm -rf /var/lib/letsencrypt/.certbot.lock 2>/dev/null || true
+rm -rf /tmp/.certbot.lock 2>/dev/null || true
 
-# Kill any running certbot processes
-sudo pkill certbot 2>/dev/null || true
+# Kill any running certbot processes (don't fail if none found)
+pkill certbot 2>/dev/null || echo "No certbot processes to kill"
 
 # Clean up any docker volumes that might have locks
 docker volume prune -f
