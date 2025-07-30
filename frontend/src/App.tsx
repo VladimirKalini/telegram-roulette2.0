@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { TonConnectButton, useTonConnectUI, useTonWallet } from '@tonconnect/ui-react';
 import WebApp from '@twa-dev/sdk';
-import { toNano } from 'ton';
+import { toNano, beginCell } from 'ton';
 import './App.css';
 
 // --- ДОБАВЬТЕ ЭТУ СТРОКУ ВВЕРХУ ФАЙЛА ---
@@ -105,13 +105,19 @@ function App() {
     const memo = `buy-gift-${gift.id}-for-user-${user.id}-${Date.now()}`;
     console.log('Transaction memo:', memo);
     
+    // Создаём правильный payload для TON Connect
+    const body = beginCell()
+      .storeUint(0, 32) // op code
+      .storeStringTail(memo) // комментарий
+      .endCell();
+    
     const transaction = {
       validUntil: Math.floor(Date.now() / 1000) + 600,
       messages: [
         {
           address: "UQA6qcGAwqhOxgX81n-P_RVAIMOkeYoaoDWtAtyWAvOZtuuA",
           amount: toNano(gift.price_ton).toString(),
-          payload: memo,
+          payload: body.toBoc().toString('base64'),
         },
       ],
     };
