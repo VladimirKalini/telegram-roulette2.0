@@ -30,6 +30,13 @@ function App() {
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
   const user = WebApp.initDataUnsafe?.user;
+  
+  // Отладка состояния кошелька
+  useEffect(() => {
+    console.log('Wallet state:', wallet);
+    console.log('User:', user);
+    console.log('TonConnectUI:', tonConnectUI);
+  }, [wallet, user, tonConnectUI]);
 
   // --- Загрузка данных при старте ---
   useEffect(() => {
@@ -81,13 +88,23 @@ function App() {
   
   // --- Логика покупки ---
   const handleBuy = async (gift: Gift) => {
-    if (!wallet || !user) {
-        setStatusMessage('Подключите кошелек и перезапустите приложение');
-        if(!wallet) tonConnectUI.openModal();
+    console.log('handleBuy called', { wallet, user, gift });
+    
+    if (!wallet) {
+        setStatusMessage('Необходимо подключить кошелёк!');
+        console.log('Opening wallet modal...');
+        tonConnectUI.openModal();
+        return;
+    }
+    
+    if (!user) {
+        setStatusMessage('Ошибка: не удаётся определить пользователя Telegram');
         return;
     }
     setStatusMessage(`Покупаем "${gift.name}"...`);
     const memo = `buy-gift-${gift.id}-for-user-${user.id}-${Date.now()}`;
+    console.log('Transaction memo:', memo);
+    
     const transaction = {
       validUntil: Math.floor(Date.now() / 1000) + 600,
       messages: [
@@ -98,21 +115,33 @@ function App() {
         },
       ],
     };
+    
+    console.log('Sending transaction:', transaction);
     try {
-      await tonConnectUI.sendTransaction(transaction);
+      const result = await tonConnectUI.sendTransaction(transaction);
+      console.log('Transaction result:', result);
+      
       setStatusMessage('Транзакция отправлена! Проверяем на сервере...');
+      
+      // Ждём немного, чтобы транзакция попала в блокчейн
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
       const response = await fetch(`${API_BASE_URL}/api/store/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: user.id, giftId: gift.id, transactionMemo: memo }),
       });
-      const result = await response.json();
+      
+      const serverResult = await response.json();
+      console.log('Server response:', serverResult);
+      
       if (response.ok) {
         setStatusMessage(`Успех! "${gift.name}" добавлен в ваш инвентарь.`);
       } else {
-        throw new Error(result.error || 'Ошибка подтверждения покупки на сервере.');
+        throw new Error(serverResult.error || 'Ошибка подтверждения покупки на сервере.');
       }
     } catch (e) {
+      console.error('Transaction error:', e);
       setStatusMessage(`Ошибка: ${e instanceof Error ? e.message : 'Неизвестная ошибка'}`);
     }
   };
@@ -210,7 +239,12 @@ function App() {
     <div className="container">
       <header className="header">
         <h1>{view === 'shop' ? 'Магазин' : view === 'inventory' ? 'Инвентарь' : 'Рулетка'}</h1>
-        <TonConnectButton />
+        <div>
+          <TonConnectButton />
+          <div style={{fontSize: '12px', marginTop: '5px'}}>
+            Кошелёк: {wallet ? `Подключён (${wallet.account.address.slice(0,6)}...)` : 'Не подключён'}
+          </div>
+        </div>
       </header>
       
       <nav className="navigation">

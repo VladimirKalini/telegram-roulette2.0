@@ -9,22 +9,8 @@ const manifestUrl = 'https://testsabc.top/tonconnect-manifest.json';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    {/* Оборачиваем все приложение в провайдер */}
     <TonConnectUIProvider 
       manifestUrl={manifestUrl}
-      walletsListConfiguration={{
-        includeWallets: [
-          {
-            appName: "telegram-wallet",
-            name: "Wallet",
-            imageUrl: "https://wallet.tg/images/logo-288.png",
-            aboutUrl: "https://wallet.tg/",
-            universalLink: "https://t.me/wallet?attach=wallet",
-            bridgeUrl: "https://bridge.tonapi.io/bridge",
-            platforms: ["ios", "android", "macos", "windows", "linux"]
-          }
-        ]
-      }}
       actionsConfiguration={{
         twaReturnUrl: 'https://t.me/TeleRoll_bot'
       }}
