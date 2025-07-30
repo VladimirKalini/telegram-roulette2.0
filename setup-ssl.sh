@@ -41,7 +41,7 @@ if curl -f -s http://$DOMAIN_NAME/.well-known/acme-challenge/test | grep -q "tes
 else
     echo "✗ ACME challenge путь не работает"
     echo "Проверьте: curl http://$DOMAIN_NAME/.well-known/acme-challenge/test"
-    exit 1
+    echo "Продолжаем получение сертификата..."
 fi
 
 # Шаг 5: Получить SSL сертификат

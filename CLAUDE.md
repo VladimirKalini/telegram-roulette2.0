@@ -102,7 +102,7 @@ Nginx configuration (`nginx.conf`) handles:
 ## Production Deployment
 
 ### Domain Configuration
-- Production domain: `v416113.hosted-by-vdsina.com`
+- Production domain: `testsabc.top`
 - SSL certificates should be mounted to `/etc/nginx/ssl/` in nginx container
 - Environment variable `DOMAIN_NAME` is used in nginx configuration
 

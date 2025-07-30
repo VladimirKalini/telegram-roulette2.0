@@ -26,8 +26,8 @@ docker-compose ps
 
 # Проверка доступности
 echo "Проверка доступности сайта..."
-if curl -f -s https://v416113.hosted-by-vdsina.com > /dev/null; then
-    echo "✅ Сайт доступен: https://v416113.hosted-by-vdsina.com"
+if curl -f -s https://testsabc.top > /dev/null; then
+    echo "✅ Сайт доступен: https://testsabc.top"
 else
     echo "❌ Сайт недоступен"
     echo "Логи nginx:"

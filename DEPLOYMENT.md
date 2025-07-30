@@ -94,16 +94,16 @@ docker-compose ps
 docker-compose logs nginx
 
 # Проверить HTTP (должен редиректить на HTTPS)
-curl -I http://v416113.hosted-by-vdsina.com
+curl -I http://testsabc.top
 
 # Проверить HTTPS
-curl -I https://v416113.hosted-by-vdsina.com
+curl -I https://testsabc.top
 
 # Проверить API
-curl https://v416113.hosted-by-vdsina.com/api/store/gifts
+curl https://testsabc.top/api/store/gifts
 
 # Проверить манифест
-curl https://v416113.hosted-by-vdsina.com/tonconnect-manifest.json
+curl https://testsabc.top/tonconnect-manifest.json
 ```
 
 ### 5. Настройка автоматического обновления сертификатов
@@ -136,7 +136,7 @@ docker-compose down
 docker-compose up --build -d
 
 # Проверить сертификаты
-ls -la ./certbot/conf/live/v416113.hosted-by-vdsina.com/
+ls -la ./certbot/conf/live/testsabc.top/
 
 # Ручное обновление сертификатов
 ./renew-cert.sh
@@ -155,6 +155,6 @@ ls -la ./certbot/conf/live/v416113.hosted-by-vdsina.com/
 
 ## После успешного развертывания
 
-Ваше приложение будет доступно по адресу: https://v416113.hosted-by-vdsina.com
+Ваше приложение будет доступно по адресу: https://testsabc.top
 
-TON Connect манифест: https://v416113.hosted-by-vdsina.com/tonconnect-manifest.json
+TON Connect манифест: https://testsabc.top/tonconnect-manifest.json
