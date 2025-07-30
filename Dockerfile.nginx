@@ -18,14 +18,11 @@ RUN yarn build
 # --- ЭТАП 2: Настройка Nginx ---
 FROM nginx:1.25-alpine
 
-# Копируем конфигурацию напрямую (без шаблонов)
+# Копируем готовую конфигурацию для Nginx
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Создаем директории для certbot
-RUN mkdir -p /var/www/certbot
+# Создаем директории для SSL сертификатов
+RUN mkdir -p /etc/ssl/certs /etc/ssl/private
 
 # Копируем собранные файлы фронтенда из этапа "builder"
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Стандартный запуск nginx
-CMD ["nginx", "-g", "daemon off;"]
+COPY --from=builder /app/dist /usr/share/nginx/html 

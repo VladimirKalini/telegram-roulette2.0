@@ -42,24 +42,9 @@ services:
       dockerfile: Dockerfile.nginx
     restart: always
     ports:
-      - "80:80"   # HTTP порт
-      - "443:443" # HTTPS порт
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt:ro
-      - ./certbot/www:/var/www/certbot:ro
-    environment:
-      - DOMAIN_NAME=${DOMAIN_NAME}
+      - "80:80" # HTTP порт
     depends_on:
       - backend
-
-  # 4. Сервис для получения SSL сертификатов
-  certbot:
-    image: certbot/certbot:latest
-    container_name: roulette_certbot
-    volumes:
-      - ./certbot/conf:/etc/letsencrypt
-      - ./certbot/www:/var/www/certbot
-    command: certonly --webroot --webroot-path=/var/www/certbot --email ${SSL_EMAIL} --agree-tos --no-eff-email -d ${DOMAIN_NAME}
 
 # volumes:
   #   postgres_data: 
