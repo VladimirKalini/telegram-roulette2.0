@@ -20,12 +20,49 @@ docker volume prune -f
 
 echo "Cleaned up certbot locks and processes"
 
+# Ensure we have HTTP-only config
+cp nginx.conf nginx.conf.backup 2>/dev/null || true
+cat > nginx.conf << 'EOF'
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    server {
+        listen 80;
+        server_name testsabc.top;
+        
+        location /.well-known/acme-challenge/ {
+            root /var/www/certbot;
+            try_files $uri =404;
+        }
+        
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+            try_files $uri $uri/ /index.html;
+        }
+        
+        location /api/ {
+            proxy_pass http://backend:3000/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+        }
+    }
+}
+EOF
+
 # Start with HTTP-only configuration first
 echo "Starting HTTP-only nginx for certificate challenge..."
 docker-compose up -d nginx
 
-# Wait for nginx to be ready
+# Wait for nginx to be ready and check status
 sleep 10
+docker-compose ps nginx
+docker-compose logs nginx
 
 # Try to get certificate with explicit cleanup
 echo "Attempting to get SSL certificate..."
