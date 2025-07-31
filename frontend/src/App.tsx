@@ -253,18 +253,29 @@ function App() {
     setStatusMessage(`Ставим подарки на сумму ${totalValue.toFixed(2)} TON...`);
     
     try {
+      console.log('Starting to place bets...');
+      setDebugInfo(`DEBUG: Отправляем ставки на сервер...`);
+      
       // Отправляем все выбранные подарки
       for (const gift of selectedGifts) {
+        console.log('Placing bet for gift:', gift);
+        
         const response = await fetch(`${API_BASE_URL}/api/roulette/bet`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: user.id, userGiftId: gift.user_gift_id }),
         });
         
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
           const result = await response.json();
+          console.error('Bet failed:', result);
           throw new Error(result.error || 'Ошибка при размещении ставки');
         }
+        
+        const result = await response.json();
+        console.log('Bet successful:', result);
       }
       
       setStatusMessage(`Ставка принята! Поставлено ${selectedGifts.length} подарков на ${totalValue.toFixed(2)} TON`);
@@ -421,40 +432,68 @@ function App() {
                 justifyContent: 'center'
               }}>
                 <div style={{
-                  backgroundColor: 'white',
-                  padding: '20px',
-                  borderRadius: '10px',
-                  maxWidth: '90%',
-                  maxHeight: '80%',
-                  overflow: 'auto'
+                  backgroundColor: '#f8f9fa',
+                  padding: '25px',
+                  borderRadius: '15px',
+                  maxWidth: '500px',
+                  maxHeight: '70vh',
+                  overflow: 'auto',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                  border: '1px solid #e0e0e0'
                 }}>
-                  <h3>Выберите подарки для ставки</h3>
+                  <h3 style={{color: '#333', textAlign: 'center', marginBottom: '20px', fontSize: '18px'}}>Выберите подарки для ставки</h3>
                   
-                  <div className="gift-list">
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+                    gap: '12px',
+                    marginBottom: '20px'
+                  }}>
                     {myGifts.length > 0 ? myGifts.map((gift) => {
                       const isSelected = selectedGifts.some(g => g.user_gift_id === gift.user_gift_id);
                       return (
                         <div 
                           key={gift.user_gift_id} 
-                          className={`gift-card ${isSelected ? 'selected' : ''}`}
                           onClick={() => toggleGiftSelection(gift)}
                           style={{
                             cursor: 'pointer',
-                            border: isSelected ? '3px solid #4ECDC4' : '1px solid #ddd',
-                            backgroundColor: isSelected ? '#e8f8f7' : 'white'
+                            border: isSelected ? '2px solid #4ECDC4' : '2px solid #ddd',
+                            backgroundColor: isSelected ? '#e8f8f7' : 'white',
+                            borderRadius: '8px',
+                            padding: '12px',
+                            textAlign: 'center',
+                            transition: 'all 0.2s ease',
+                            position: 'relative'
                           }}
                         >
-                          <h2>{gift.name}</h2>
-                          <div className="price-tag">{parseFloat(gift.price_ton).toFixed(2)} TON</div>
-                          {isSelected && <div style={{color: '#4ECDC4', fontWeight: 'bold'}}>✓ Выбрано</div>}
+                          <h4 style={{color: '#333', fontSize: '14px', margin: '0 0 8px 0'}}>{gift.name}</h4>
+                          <div style={{color: '#666', fontSize: '12px', fontWeight: 'bold'}}>{parseFloat(gift.price_ton).toFixed(2)} TON</div>
+                          {isSelected && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '5px',
+                              right: '5px',
+                              color: '#4ECDC4',
+                              fontSize: '16px',
+                              fontWeight: 'bold'
+                            }}>✓</div>
+                          )}
                         </div>
                       );
-                    }) : <p>У вас нет подарков для ставки.</p>}
+                    }) : <p style={{color: '#666', textAlign: 'center'}}>У вас нет подарков для ставки.</p>}
                   </div>
                   
-                  <div style={{marginTop: '20px', textAlign: 'center'}}>
+                  <div style={{textAlign: 'center', borderTop: '1px solid #e0e0e0', paddingTop: '15px'}}>
                     {selectedGifts.length > 0 && (
-                      <div style={{marginBottom: '10px'}}>
+                      <div style={{
+                        backgroundColor: '#e8f5e8',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        marginBottom: '15px',
+                        color: '#333',
+                        fontSize: '14px',
+                        fontWeight: 'bold'
+                      }}>
                         Общая стоимость: {selectedGifts.reduce((sum, gift) => sum + parseFloat(gift.price_ton), 0).toFixed(2)} TON
                       </div>
                     )}
@@ -463,32 +502,36 @@ function App() {
                       onClick={placeBets}
                       disabled={selectedGifts.length === 0}
                       style={{
-                        padding: '10px 20px',
+                        padding: '12px 24px',
                         fontSize: '16px',
                         backgroundColor: selectedGifts.length > 0 ? '#4ECDC4' : '#ccc',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '5px',
+                        borderRadius: '8px',
                         cursor: selectedGifts.length > 0 ? 'pointer' : 'not-allowed',
-                        marginRight: '10px'
+                        marginRight: '10px',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s ease'
                       }}
                     >
-                      Поставить ({selectedGifts.length})
+                      🎲 Поставить ({selectedGifts.length})
                     </button>
                     
                     <button 
                       onClick={() => setShowGiftSelector(false)}
                       style={{
-                        padding: '10px 20px',
+                        padding: '12px 24px',
                         fontSize: '16px',
-                        backgroundColor: '#ff6b6b',
+                        backgroundColor: '#6c757d',
                         color: 'white',
                         border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer'
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        transition: 'all 0.2s ease'
                       }}
                     >
-                      Отмена
+                      ✖ Отмена
                     </button>
                   </div>
                 </div>
