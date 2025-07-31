@@ -246,6 +246,9 @@ function App() {
   
   // Поставить выбранные подарки
   const placeBets = async () => {
+    console.log('placeBets called with:', selectedGifts);
+    setDebugInfo(`DEBUG: Поставка ставки, подарков: ${selectedGifts.length}`);
+    
     if (!user || selectedGifts.length === 0) {
       setStatusMessage('Выберите подарки для ставки');
       return;
