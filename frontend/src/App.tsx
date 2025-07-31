@@ -144,16 +144,10 @@ function App() {
       ],
     };
     
-    console.log('Sending transaction:', transaction);
+    // Тестовый режим: пропускаем реальную оплату
+    setStatusMessage('Тестовый режим: обрабатываем покупку...');
+    
     try {
-      const result = await tonConnectUI.sendTransaction(transaction);
-      console.log('Transaction result:', result);
-      
-      setStatusMessage('Транзакция отправлена! Проверяем на сервере...');
-      
-      // Ждём немного, чтобы транзакция попала в блокчейн
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
       const response = await fetch(`${API_BASE_URL}/api/store/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -165,6 +159,10 @@ function App() {
       
       if (response.ok) {
         setStatusMessage(`Успех! "${gift.name}" добавлен в ваш инвентарь.`);
+        // Обновляем список товаров в инвентаре
+        if (view === 'inventory') {
+          await fetchMyGifts();
+        }
       } else {
         throw new Error(serverResult.error || 'Ошибка подтверждения покупки на сервере.');
       }
