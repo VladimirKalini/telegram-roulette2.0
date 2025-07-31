@@ -25,6 +25,7 @@ function App() {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string>('');
+  const [debugInfo, setDebugInfo] = useState<string>('');
   const [view, setView] = useState<View>('roulette'); // Начинаем с рулетки
 
   const wallet = useTonWallet();
@@ -104,6 +105,7 @@ function App() {
     
     setStatusMessage(`Покупаем "${gift.name}"...`);
     const memo = `buy-gift-${gift.id}-for-user-${user.id}-${Date.now()}`;
+    setDebugInfo(`DEBUG: Мемо: ${memo}, Сумма: ${gift.price_ton} TON, User ID: ${user.id}`);
     console.log('Transaction memo:', memo);
     
     // Пробуем через Telegram WebApp API
@@ -293,6 +295,7 @@ function App() {
       </nav>
 
       {statusMessage && <div className="status-message">{statusMessage}</div>}
+      {debugInfo && <div style={{background: '#f0f0f0', padding: '10px', fontSize: '12px', marginBottom: '10px'}}>{debugInfo}</div>}
       
       {renderContent()}
     </div>
