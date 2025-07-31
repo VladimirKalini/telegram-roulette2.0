@@ -271,20 +271,25 @@ function App() {
         if (!response.ok) {
           const result = await response.json();
           console.error('Bet failed:', result);
-          throw new Error(result.error || 'Ошибка при размещении ставки');
+          setDebugInfo(`DEBUG: Ошибка ставки: ${result.error}`);
+          setStatusMessage(`Ошибка: ${result.error}`);
+          return; // Прекращаем выполнение
         }
         
         const result = await response.json();
         console.log('Bet successful:', result);
       }
       
-      setStatusMessage(`Ставка принята! Поставлено ${selectedGifts.length} подарков на ${totalValue.toFixed(2)} TON`);
+      setStatusMessage(`Успех! Поставлено ${selectedGifts.length} подарков на ${totalValue.toFixed(2)} TON`);
+      setDebugInfo(`DEBUG: Ставка успешна! Обновляем рулетку...`);
       setSelectedGifts([]);
       setShowGiftSelector(false);
       
       // Обновляем состояние рулетки
       await fetchRouletteState();
       await fetchMyGifts();
+      
+      console.log('Bets placed successfully, state updated');
       
     } catch (e) {
       setStatusMessage(`Ошибка: ${e instanceof Error ? e.message : 'Неизвестная ошибка'}`);
@@ -297,8 +302,23 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/api/roulette/state`);
       if (response.ok) {
         const data = await response.json();
-        // Обработка данных рулетки
         console.log('Roulette state:', data);
+        
+        // Преобразуем данные в нужный формат
+        const players = data.participants ? data.participants.map((p: any, index: number) => ({
+          userId: parseInt(p.userId),
+          username: p.username,
+          totalBet: p.totalValue,
+          percentage: p.chance,
+          color: playerColors[index % playerColors.length]
+        })) : [];
+        
+        setRouletteState({
+          isActive: data.status === 'countdown',
+          players,
+          timeLeft: data.status === 'countdown' ? 20 : 0,
+          isSpinning: data.status === 'spinning'
+        });
       }
     } catch (e) {
       console.error('Ошибка получения состояния рулетки:', e);
@@ -311,6 +331,9 @@ function App() {
     setStatusMessage('');
     if (newView === 'inventory' || newView === 'roulette') {
       fetchMyGifts();
+    }
+    if (newView === 'roulette') {
+      fetchRouletteState();
     }
     setView(newView);
   };
