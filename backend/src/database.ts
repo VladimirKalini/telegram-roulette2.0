@@ -156,7 +156,9 @@ const getBetsForRound = async (roundId: number) => {
         SELECT 
             rb.user_id,
             u.username,
-            g.price_ton
+            g.price_ton,
+            g.name as gift_name,
+            rb.user_gift_id
         FROM roulette_bets rb
         JOIN user_gifts ug ON rb.user_gift_id = ug.id
         JOIN gifts g ON ug.gift_id = g.id
@@ -165,6 +167,117 @@ const getBetsForRound = async (roundId: number) => {
     `;
     const result = await pool.query(queryText, [roundId]);
     return result.rows;
+};
+
+// Получить полное состояние рулетки
+const getRouletteState = async () => {
+    try {
+        // Получаем текущий раунд
+        const currentRound = await getCurrentRound();
+        
+        // Получаем все ставки для этого раунда
+        const bets = await getBetsForRound(currentRound.id);
+        
+        // Группируем ставки по игрокам
+        const playerMap = new Map();
+        let totalValue = 0;
+        
+        bets.forEach(bet => {
+            const userId = bet.user_id;
+            const betValue = parseFloat(bet.price_ton);
+            totalValue += betValue;
+            
+            if (!playerMap.has(userId)) {
+                playerMap.set(userId, {
+                    userId,
+                    username: bet.username,
+                    totalBet: 0,
+                    gifts: [],
+                    userGiftIds: []
+                });
+            }
+            
+            const player = playerMap.get(userId);
+            player.totalBet += betValue;
+            player.gifts.push({
+                name: bet.gift_name,
+                price_ton: bet.price_ton
+            });
+            player.userGiftIds.push(bet.user_gift_id);
+        });
+        
+        // Преобразуем в массив и вычисляем проценты
+        const players = Array.from(playerMap.values()).map((player, index) => ({
+            ...player,
+            percentage: totalValue > 0 ? (player.totalBet / totalValue) * 100 : 0,
+            color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'][index % 5]
+        }));
+        
+        return {
+            roundId: currentRound.id,
+            status: currentRound.status,
+            players,
+            totalValue,
+            timeLeft: 0, // Будем вычислять отдельно
+            maxPlayers: 5
+        };
+    } catch (error) {
+        console.error('Ошибка получения состояния рулетки:', error);
+        throw error;
+    }
+};
+
+// Запустить раунд (начать отсчет)
+const startRound = async (roundId: number) => {
+    const queryText = `
+        UPDATE roulette_rounds 
+        SET status = 'countdown', started_at = NOW() 
+        WHERE id = $1;
+    `;
+    await pool.query(queryText, [roundId]);
+};
+
+// Завершить раунд и определить победителя
+const finishRound = async (roundId: number, winnerId: number) => {
+    const queryText = `
+        UPDATE roulette_rounds 
+        SET status = 'finished', winner_id = $2, finished_at = NOW() 
+        WHERE id = $1;
+    `;
+    await pool.query(queryText, [roundId, winnerId]);
+    
+    // Передаем все подарки победителю
+    await transferAllGiftsToWinner(roundId, winnerId);
+};
+
+// Передать все подарки победителю
+const transferAllGiftsToWinner = async (roundId: number, winnerId: number) => {
+    // Получаем все ставки раунда
+    const bets = await getBetsForRound(roundId);
+    
+    // Передаем каждый подарок победителю
+    for (const bet of bets) {
+        const queryText = `
+            UPDATE user_gifts 
+            SET user_id = $1, is_bet = FALSE 
+            WHERE id = $2;
+        `;
+        await pool.query(queryText, [winnerId, bet.user_gift_id]);
+    }
+};
+
+// Проверить, можно ли начать раунд
+const canStartRound = async (roundId: number) => {
+    const bets = await getBetsForRound(roundId);
+    const uniquePlayers = new Set(bets.map(bet => bet.user_id));
+    return uniquePlayers.size >= 2;
+};
+
+// Проверить, можно ли добавить игрока
+const canAddPlayer = async (roundId: number) => {
+    const bets = await getBetsForRound(roundId);
+    const uniquePlayers = new Set(bets.map(bet => bet.user_id));
+    return uniquePlayers.size < 5; // Максимум 5 игроков
 };
 
 
@@ -184,5 +297,11 @@ export {
     createBetsTable,
     getCurrentRound,
     placeBet,
-    getBetsForRound
+    getBetsForRound,
+    getRouletteState,
+    startRound,
+    finishRound,
+    transferAllGiftsToWinner,
+    canStartRound,
+    canAddPlayer
 };

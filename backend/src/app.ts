@@ -18,6 +18,12 @@ import {
   createBetsTable,
   getCurrentRound,
   placeBet,
+  getBetsForRound,
+  getRouletteState,
+  startRound,
+  finishRound,
+  canStartRound,
+  canAddPlayer,
   getBetsForRound
 } from './database.js'; 
 
@@ -129,39 +135,68 @@ app.post('/api/roulette/bet', async (req: Request, res: Response) => {
 // 6. Получение состояния текущего раунда
 app.get('/api/roulette/state', async (req: Request, res: Response) => {
     try {
-        const currentRound = await getCurrentRound();
-        const bets = await getBetsForRound(currentRound.id);
-
-        // Считаем общую сумму банка
-        const totalBank = bets.reduce((sum, bet) => sum + parseFloat(bet.price_ton), 0);
+        const state = await getRouletteState();
         
-        // Группируем ставки по пользователям и считаем их шансы
-        const participantsMap = new Map();
-        for (const bet of bets) {
-            if (!participantsMap.has(bet.user_id)) {
-                participantsMap.set(bet.user_id, {
-                    userId: bet.user_id,
-                    username: bet.username,
-                    totalValue: 0,
-                });
-            }
-            participantsMap.get(bet.user_id).totalValue += parseFloat(bet.price_ton);
+        // Проверяем, можно ли начать раунд
+        if (state.status === 'waiting' && state.players.length >= 2) {
+            await startRound(state.roundId);
+            state.status = 'countdown';
         }
 
-        const participants = Array.from(participantsMap.values()).map(p => ({
-            ...p,
-            chance: totalBank > 0 ? (p.totalValue / totalBank) * 100 : 0,
-        }));
 
         res.status(200).json({
-            roundId: currentRound.id,
-            status: currentRound.status,
-            totalBank: totalBank,
-            participants: participants,
+            ...state,
+            isActive: state.status === 'countdown',
+            timeLeft: state.status === 'countdown' ? 20 : 0,
+            isSpinning: state.status === 'spinning'
         });
 
     } catch (error) {
         console.error('Error getting roulette state:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// 7. Запустить рулетку (для тестирования)
+app.post('/api/roulette/spin', async (req: Request, res: Response) => {
+    try {
+        const state = await getRouletteState();
+        
+        if (state.players.length < 2) {
+            return res.status(400).json({ error: 'Недостаточно игроков для запуска' });
+        }
+        
+        // Генерируем случайное число от 0 до 100
+        const randomNumber = Math.random() * 100;
+        let currentPercentage = 0;
+        let winner = null;
+        
+        // Определяем победителя
+        for (const player of state.players) {
+            currentPercentage += player.percentage;
+            if (randomNumber <= currentPercentage) {
+                winner = player;
+                break;
+            }
+        }
+        
+        if (!winner) {
+            winner = state.players[state.players.length - 1]; // На всякий случай
+        }
+        
+        // Завершаем раунд
+        await finishRound(state.roundId, winner.userId);
+        
+        console.log(`🎉 Победитель: ${winner.username} (шанс: ${winner.percentage.toFixed(1)}%, число: ${randomNumber.toFixed(2)})`);
+        
+        res.status(200).json({
+            winner,
+            randomNumber: randomNumber.toFixed(2),
+            spinResult: `Победил ${winner.username}!`
+        });
+        
+    } catch (error) {
+        console.error('Error spinning roulette:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
