@@ -101,23 +101,36 @@ function App() {
         setStatusMessage('Ошибка: не удаётся определить пользователя Telegram');
         return;
     }
+    
     setStatusMessage(`Покупаем "${gift.name}"...`);
     const memo = `buy-gift-${gift.id}-for-user-${user.id}-${Date.now()}`;
     console.log('Transaction memo:', memo);
     
-    // Создаём правильный payload для TON Connect
-    const body = beginCell()
-      .storeUint(0, 32) // op code
-      .storeStringTail(memo) // комментарий
-      .endCell();
+    // Пробуем через Telegram WebApp API
+    if (WebApp.openInvoice) {
+        try {
+            const invoiceUrl = `ton://transfer/${"UQA6qcGAwqhOxgX81n-P_RVAIMOkeYoaoDWtAtyWAvOZtuuA"}?amount=${toNano(gift.price_ton)}&text=${encodeURIComponent(memo)}`;
+            WebApp.openInvoice(invoiceUrl, (status: string) => {
+                console.log('Invoice status:', status);
+                if (status === 'paid') {
+                    setStatusMessage('Платёж отправлен! Проверяем...');
+                    // Проверяем на сервере
+                    setTimeout(() => checkPurchase(user.id, gift.id, memo), 3000);
+                }
+            });
+            return;
+        } catch (e) {
+            console.log('WebApp.openInvoice failed, trying TON Connect');
+        }
+    }
     
+    // Если openInvoice не работает, используем TON Connect
     const transaction = {
       validUntil: Math.floor(Date.now() / 1000) + 600,
       messages: [
         {
           address: "UQA6qcGAwqhOxgX81n-P_RVAIMOkeYoaoDWtAtyWAvOZtuuA",
           amount: toNano(gift.price_ton).toString(),
-          payload: body.toBoc().toString('base64'),
         },
       ],
     };
@@ -149,6 +162,26 @@ function App() {
     } catch (e) {
       console.error('Transaction error:', e);
       setStatusMessage(`Ошибка: ${e instanceof Error ? e.message : 'Неизвестная ошибка'}`);
+    }
+  };
+  
+  // Вспомогательная функция для проверки покупки
+  const checkPurchase = async (userId: number, giftId: number, memo: string) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/store/buy`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, giftId, transactionMemo: memo }),
+      });
+      
+      const result = await response.json();
+      if (response.ok) {
+        setStatusMessage('Успех! Подарок добавлен в инвентарь.');
+      } else {
+        setStatusMessage(`Ошибка: ${result.error}`);
+      }
+    } catch (e) {
+      setStatusMessage('Ошибка проверки платежа');
     }
   };
 
