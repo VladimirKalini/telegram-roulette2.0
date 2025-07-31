@@ -144,10 +144,16 @@ function App() {
       ],
     };
     
-    // Тестовый режим: пропускаем реальную оплату
-    setStatusMessage('Тестовый режим: обрабатываем покупку...');
-    
+    console.log('Sending transaction:', transaction);
     try {
+      const result = await tonConnectUI.sendTransaction(transaction);
+      console.log('Transaction result:', result);
+      
+      setStatusMessage('Транзакция отправлена! Проверяем на сервере...');
+      
+      // Ждём 5 секунд, чтобы транзакция попала в блокчейн
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      
       const response = await fetch(`${API_BASE_URL}/api/store/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,6 +200,9 @@ function App() {
 
   // --- НОВАЯ ЛОГИКА: Сделать ставку ---
   const handlePlaceBet = async (userGift: Gift) => {
+    console.log('handlePlaceBet called with:', userGift);
+    setDebugInfo(`DEBUG: Клик по подарку: ${userGift.name}, ID: ${userGift.user_gift_id}`);
+    
     if (!user || !userGift.user_gift_id) {
         setStatusMessage('Не удалось определить пользователя или подарок.');
         return;
