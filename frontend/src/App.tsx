@@ -173,16 +173,10 @@ function App() {
       ],
     };
     
-    console.log('Sending transaction:', transaction);
+    // ТЕСТОВЫЙ РЕЖИМ: покупка без реальных TON
+    setStatusMessage('Тестовая покупка - обрабатываем...');
+    
     try {
-      const result = await tonConnectUI.sendTransaction(transaction);
-      console.log('Transaction result:', result);
-      
-      setStatusMessage('Транзакция отправлена! Проверяем на сервере...');
-      
-      // Ждём 5 секунд, чтобы транзакция попала в блокчейн
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      
       const response = await fetch(`${API_BASE_URL}/api/store/buy`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -193,7 +187,8 @@ function App() {
       console.log('Server response:', serverResult);
       
       if (response.ok) {
-        setStatusMessage(`Успех! "${gift.name}" добавлен в ваш инвентарь.`);
+        setStatusMessage(`Успех! "${gift.name}" добавлен в ваш инвентарь (тест)`);
+        setDebugInfo(''); // Очищаем DEBUG после покупки
         // Обновляем список товаров в инвентаре
         if (view === 'inventory') {
           await fetchMyGifts();
@@ -511,6 +506,9 @@ function App() {
       <header className="header">
         <h1>{view === 'shop' ? 'Магазин' : view === 'inventory' ? 'Инвентарь' : 'Рулетка'}</h1>
         <div>
+          <div style={{backgroundColor: '#ffeb3b', padding: '5px', borderRadius: '3px', fontSize: '12px', marginBottom: '10px', color: '#000'}}>
+            📝 ТЕСТОВЫЙ РЕЖИМ - бесплатные покупки
+          </div>
           <TonConnectButton />
           <div style={{fontSize: '12px', marginTop: '5px'}}>
             Кошелёк: {wallet ? `Подключён (${wallet.account.address.slice(0,6)}...)` : 'Не подключён'}
