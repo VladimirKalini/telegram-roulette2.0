@@ -127,12 +127,19 @@ function App() {
     }
     
     // Если openInvoice не работает, используем TON Connect
+    // Создаём payload с мемо
+    const body = beginCell()
+      .storeUint(0, 32) // op code для текстового комментария
+      .storeStringTail(memo)
+      .endCell();
+    
     const transaction = {
       validUntil: Math.floor(Date.now() / 1000) + 600,
       messages: [
         {
           address: "UQA6qcGAwqhOxgX81n-P_RVAIMOkeYoaoDWtAtyWAvOZtuuA",
           amount: toNano(gift.price_ton).toString(),
+          payload: body.toBoc().toString('base64'),
         },
       ],
     };
