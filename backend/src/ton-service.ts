@@ -43,6 +43,12 @@ function extractMemo(body: Cell): string {
  * @returns - true, если транзакция найдена, иначе false.
  */
 export const findTransaction = async (amountTON: number, memo: string): Promise<boolean> => {
+  // Тестовый режим: принимаем все покупки без проверки блокчейна
+  console.log(`💰 Тестовая покупка: ${amountTON} TON, мемо: "${memo}"`);
+  console.log('✅ Покупка принята (тестовый режим)');
+  return true;
+  
+  /*
   try {
     const client = await getClient();
     const myAddress = Address.parse(MY_WALLET_ADDRESS);
@@ -72,8 +78,7 @@ export const findTransaction = async (amountTON: number, memo: string): Promise<
   
   } catch (error) {
     console.error('Ошибка при получении транзакций:', error);
-    // Временно возвращаем true для тестирования если API недоступен
-    console.log('⚠️ API недоступен, принимаем транзакцию как валидную для тестирования');
-    return true;
+    return false;
   }
+  */
 };

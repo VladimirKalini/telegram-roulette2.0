@@ -302,7 +302,7 @@ function App() {
       </nav>
 
       {statusMessage && <div className="status-message">{statusMessage}</div>}
-      {debugInfo && <div style={{background: '#f0f0f0', padding: '10px', fontSize: '12px', marginBottom: '10px'}}>{debugInfo}</div>}
+      {debugInfo && <div style={{background: '#f0f0f0', padding: '10px', fontSize: '12px', marginBottom: '10px', color: '#000'}}>{debugInfo}</div>}
       
       {renderContent()}
     </div>
