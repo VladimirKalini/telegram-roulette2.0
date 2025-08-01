@@ -153,7 +153,13 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
             roundId: state.roundId,
             status: state.status,
             playersCount: state.players.length,
-            players: state.players.map(p => ({ userId: p.userId, username: p.username, totalBet: p.totalBet, percentage: p.percentage }))
+            players: state.players.map(p => ({ 
+                userId: p.userId, 
+                username: p.username, 
+                totalBet: p.totalBet, 
+                percentage: p.percentage,
+                color: p.color 
+            }))
         });
         
         // Проверяем, можно ли начать раунд

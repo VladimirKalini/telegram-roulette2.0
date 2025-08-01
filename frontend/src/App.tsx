@@ -341,8 +341,15 @@ function App() {
           username: p.username,
           totalBet: p.totalBet,
           percentage: p.percentage,
-          color: p.color
+          color: p.color || '#FF6B6B' // fallback цвет если нет
         })) : [];
+        
+        console.log('🔍 Players after mapping:', players.map(p => ({ 
+          userId: p.userId, 
+          username: p.username, 
+          color: p.color,
+          percentage: p.percentage 
+        })));
         
         console.log('🔍 Processed players:', players);
         
@@ -474,6 +481,11 @@ function App() {
           </div>
         );
       case 'roulette':
+        console.log('🎯 Rendering roulette with state:', { 
+          playersCount: rouletteState.players.length, 
+          players: rouletteState.players.map(p => ({ username: p.username, color: p.color, percentage: p.percentage }))
+        });
+        
         return (
           <div style={{position: 'relative'}}>
             <div style={{position: 'relative', width: '350px', height: '350px', margin: '20px auto'}}>
