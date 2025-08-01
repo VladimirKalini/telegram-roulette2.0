@@ -133,6 +133,8 @@ app.post('/api/roulette/bet', async (req: Request, res: Response) => {
 
     // Делаем ставку
     await placeBet(currentRound.id, userGiftId, userId);
+    
+    console.log(`💰 Ставка размещена: пользователь ${userId}, подарок ${userGiftId}, раунд ${currentRound.id}`);
 
     res.status(200).json({ message: 'Bet placed successfully in round ' + currentRound.id });
   } catch (error) {
@@ -145,10 +147,18 @@ app.post('/api/roulette/bet', async (req: Request, res: Response) => {
 // 6. Получение состояния текущего раунда
 app.get('/api/roulette/state', async (req: Request, res: Response) => {
     try {
+        console.log('🔍 API /api/roulette/state вызван');
         const state = await getRouletteState();
+        console.log('🔍 State from getRouletteState:', {
+            roundId: state.roundId,
+            status: state.status,
+            playersCount: state.players.length,
+            players: state.players.map(p => ({ userId: p.userId, username: p.username, totalBet: p.totalBet, percentage: p.percentage }))
+        });
         
         // Проверяем, можно ли начать раунд
         if (state.status === 'waiting' && state.players.length >= 2) {
+            console.log('🕒 Автоматически запускаем countdown - игроков >= 2');
             await startRound(state.roundId);
             state.status = 'countdown';
         }
@@ -163,7 +173,7 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
             console.log(`⏰ Countdown: осталось ${timeLeft} секунд из 25`);
         }
 
-        res.status(200).json({
+        const responseData = {
             ...state,
             isActive: state.status === 'countdown',
             timeLeft: timeLeft,
@@ -175,7 +185,22 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
                 playersCount: state.players.length,
                 startedAt: state.startedAt
             }
-        });
+        };
+        
+        console.log('🔍 Отправляем на frontend:', JSON.stringify({
+            status: responseData.status,
+            playersCount: responseData.players.length,
+            players: responseData.players.map(p => ({ 
+                userId: p.userId, 
+                username: p.username, 
+                totalBet: p.totalBet, 
+                percentage: p.percentage,
+                color: p.color 
+            })),
+            timeLeft: responseData.timeLeft
+        }, null, 2));
+        
+        res.status(200).json(responseData);
 
     } catch (error) {
         console.error('Error getting roulette state:', error);

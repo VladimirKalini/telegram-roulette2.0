@@ -314,11 +314,13 @@ function App() {
       setSelectedGifts([]);
       setShowGiftSelector(false);
       
+      console.log('🎯 Ставки размещены, обновляем данные...');
+      
       // Обновляем состояние рулетки
       await fetchRouletteState();
       await fetchMyGifts();
       
-      console.log('Bets placed successfully, state updated');
+      console.log('🎯 Данные обновлены после ставки');
       
     } catch (e) {
       setStatusMessage(`Ошибка: ${e instanceof Error ? e.message : 'Неизвестная ошибка'}`);
@@ -331,7 +333,7 @@ function App() {
       const response = await fetch(`${API_BASE_URL}/api/roulette/state`);
       if (response.ok) {
         const data = await response.json();
-        console.log('Roulette state:', data);
+        console.log('🔍 RAW Backend data:', JSON.stringify(data, null, 2));
         
         // Используем данные напрямую из backend (поле players, не participants)
         const players = data.players ? data.players.map((p: any) => ({
@@ -342,16 +344,23 @@ function App() {
           color: p.color
         })) : [];
         
-        setRouletteState({
+        console.log('🔍 Processed players:', players);
+        
+        const newState = {
           isActive: data.status === 'countdown',
           players,
           timeLeft: data.timeLeft || 0,
           isSpinning: data.status === 'spinning',
           winner: data.winner
-        });
+        };
+        
+        console.log('🔍 Setting roulette state:', newState);
+        setRouletteState(newState);
+      } else {
+        console.error('❌ Response not ok:', response.status, response.statusText);
       }
     } catch (e) {
-      console.error('Ошибка получения состояния рулетки:', e);
+      console.error('❌ Ошибка получения состояния рулетки:', e);
     }
   };
 
