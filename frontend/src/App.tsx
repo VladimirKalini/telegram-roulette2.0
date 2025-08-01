@@ -333,13 +333,13 @@ function App() {
         const data = await response.json();
         console.log('Roulette state:', data);
         
-        // Преобразуем данные в нужный формат
-        const players = data.participants ? data.participants.map((p: any, index: number) => ({
+        // Используем данные напрямую из backend (поле players, не participants)
+        const players = data.players ? data.players.map((p: any) => ({
           userId: parseInt(p.userId),
           username: p.username,
-          totalBet: p.totalValue,
-          percentage: p.chance,
-          color: playerColors[index % playerColors.length]
+          totalBet: p.totalBet,
+          percentage: p.percentage,
+          color: p.color
         })) : [];
         
         setRouletteState({
@@ -369,7 +369,7 @@ function App() {
       if (response.ok) {
         const result = await response.json();
         
-        // Ждем завершения анимации
+        // Ждем завершения анимации (4 секунды)
         setTimeout(() => {
           setStatusMessage(`🎉 ${result.spinResult}`);
           setRouletteState(prev => ({ 
@@ -383,7 +383,7 @@ function App() {
             fetchRouletteState();
             fetchMyGifts();
           }, 2000);
-        }, 3000);
+        }, 4000); // Увеличили до 4 секунд под новую анимацию
         
       } else {
         const errorResult = await response.json();
@@ -467,22 +467,37 @@ function App() {
       case 'roulette':
         return (
           <div style={{position: 'relative'}}>
-            <div className="roulette-wheel" style={{
-              width: '350px', 
-              height: '350px', 
-              border: '8px solid #333', 
-              borderRadius: '50%', 
-              margin: '20px auto',
-              position: 'relative',
-              background: rouletteState.players.length === 0 ? '#f0f0f0' : 'conic-gradient(' + 
-                rouletteState.players.map((p, i) => {
-                  const startPercentage = rouletteState.players.slice(0, i).reduce((sum, player) => sum + player.percentage, 0);
-                  const endPercentage = startPercentage + p.percentage;
-                  return `${p.color} ${startPercentage}% ${endPercentage}%`;
-                }).join(', ') + ')',
-              transition: rouletteState.isSpinning ? 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
-              transform: rouletteState.isSpinning ? 'rotate(1800deg)' : 'rotate(0deg)'
-            }}>
+            <div style={{position: 'relative', width: '350px', height: '350px', margin: '20px auto'}}>
+              {/* Указатель - ВСЕГДА НА МЕСТЕ */}
+              <div style={{
+                position: 'absolute',
+                top: '-10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '15px solid transparent',
+                borderRight: '15px solid transparent',
+                borderTop: '30px solid #ff0000',
+                zIndex: 20
+              }}></div>
+              
+              {/* Рулетка - КРУТИТСЯ */}
+              <div className="roulette-wheel" style={{
+                width: '350px', 
+                height: '350px', 
+                border: '8px solid #333', 
+                borderRadius: '50%', 
+                position: 'relative',
+                background: rouletteState.players.length === 0 ? '#f0f0f0' : 'conic-gradient(' + 
+                  rouletteState.players.map((p, i) => {
+                    const startPercentage = rouletteState.players.slice(0, i).reduce((sum, player) => sum + player.percentage, 0);
+                    const endPercentage = startPercentage + p.percentage;
+                    return `${p.color} ${startPercentage}% ${endPercentage}%`;
+                  }).join(', ') + ')',
+                transition: rouletteState.isSpinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+                transform: rouletteState.isSpinning ? `rotate(${1800 + Math.random() * 360}deg)` : 'rotate(0deg)'
+              }}>
               
               {/* Игроки на рулетке */}
               {rouletteState.players.length > 0 && (
@@ -564,19 +579,7 @@ function App() {
                 )}
               </div>
 
-              {/* Указатель */}
-              <div style={{
-                position: 'absolute',
-                top: '-10px',
-                left: '50%',
-                transform: 'translateX(-50%)',
-                width: '0',
-                height: '0',
-                borderLeft: '15px solid transparent',
-                borderRight: '15px solid transparent',
-                borderTop: '30px solid #ff0000',
-                zIndex: 10
-              }}></div>
+              </div>
             </div>
             
             <div style={{textAlign: 'center', marginBottom: '20px'}}>

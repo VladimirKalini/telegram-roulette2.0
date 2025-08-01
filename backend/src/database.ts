@@ -207,20 +207,40 @@ const getRouletteState = async () => {
         });
         
         // Преобразуем в массив и вычисляем проценты
-        const players = Array.from(playerMap.values()).map((player, index) => ({
-            ...player,
-            percentage: totalValue > 0 ? (player.totalBet / totalValue) * 100 : 0,
-            color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'][index % 5]
-        }));
+        // Сортируем по userId чтобы цвета были стабильными
+        const sortedPlayerIds = Array.from(playerMap.keys()).sort();
+        const players = sortedPlayerIds.map((userId, index) => {
+            const player = playerMap.get(userId);
+            return {
+                ...player,
+                percentage: totalValue > 0 ? (player.totalBet / totalValue) * 100 : 0,
+                color: ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'][index % 5]
+            };
+        });
         
-        return {
+        const result = {
             roundId: currentRound.id,
             status: currentRound.status,
+            startedAt: currentRound.started_at,
             players,
             totalValue,
             timeLeft: 0, // Будем вычислять отдельно
             maxPlayers: 5
         };
+        
+        console.log(`🎯 getRouletteState результат:`, {
+            roundId: result.roundId,
+            status: result.status,
+            playersCount: result.players.length,
+            totalValue: result.totalValue,
+            playersDetails: result.players.map(p => ({ 
+                username: p.username, 
+                totalBet: p.totalBet, 
+                percentage: p.percentage 
+            }))
+        });
+        
+        return result;
     } catch (error) {
         console.error('Ошибка получения состояния рулетки:', error);
         throw error;

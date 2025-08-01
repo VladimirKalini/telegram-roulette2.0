@@ -154,11 +154,27 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
         }
 
 
+        // Если раунд в countdown, вычисляем оставшееся время
+        let timeLeft = 0;
+        if (state.status === 'countdown' && state.startedAt) {
+            const elapsed = Math.floor((Date.now() - new Date(state.startedAt).getTime()) / 1000);
+            timeLeft = Math.max(0, 25 - elapsed);
+            
+            console.log(`⏰ Countdown: осталось ${timeLeft} секунд из 25`);
+        }
+
         res.status(200).json({
             ...state,
             isActive: state.status === 'countdown',
-            timeLeft: state.status === 'countdown' ? 20 : 0,
-            isSpinning: state.status === 'spinning'
+            timeLeft: timeLeft,
+            isSpinning: state.status === 'spinning',
+            // Добавляем детали для отладки
+            debug: {
+                roundId: state.roundId,
+                status: state.status,
+                playersCount: state.players.length,
+                startedAt: state.startedAt
+            }
         });
 
     } catch (error) {
