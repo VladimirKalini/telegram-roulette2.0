@@ -138,9 +138,18 @@ app.post('/api/roulette/bet', async (req: Request, res: Response) => {
 
     res.status(200).json({ message: 'Bet placed successfully in round ' + currentRound.id });
   } catch (error) {
-    console.error('Error placing bet:', error);
-    // Ошибка может возникнуть, если этот подарок уже был поставлен (UNIQUE constraint)
-    res.status(500).json({ error: 'Internal server error or gift already bet' });
+    console.error('❌ Error placing bet:', error);
+    console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    
+    // Проверяем специфичные ошибки
+    if (error instanceof Error && error.message.includes('unique constraint')) {
+      res.status(400).json({ error: 'Этот подарок уже поставлен в текущем раунде' });
+    } else {
+      res.status(500).json({ 
+        error: 'Internal server error or gift already bet',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
   }
 });
 
@@ -209,8 +218,13 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
         res.status(200).json(responseData);
 
     } catch (error) {
-        console.error('Error getting roulette state:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('❌ Error getting roulette state:', error);
+        console.error('❌ Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        res.status(500).json({ 
+            error: 'Internal server error',
+            details: error instanceof Error ? error.message : 'Unknown error',
+            timestamp: new Date().toISOString()
+        });
     }
 });
 
