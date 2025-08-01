@@ -112,11 +112,11 @@ function App() {
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
     
-    if (view === 'roulette') {
-      // Обновляем состояние рулетки каждую секунду для лучшей синхронизации
+    if (view === 'roulette' && !rouletteState.isSpinning) {
+      // Обновляем состояние рулетки только когда НЕ крутится
       interval = setInterval(() => {
         fetchRouletteState();
-      }, 1000);
+      }, 2000);
       
       // Начальная загрузка
       fetchRouletteState();
@@ -125,15 +125,9 @@ function App() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [view]);
+  }, [view, rouletteState.isSpinning]); // Добавляем isSpinning в зависимости
 
-  // --- Автоматический запуск рулетки ---
-  useEffect(() => {
-    if (rouletteState.timeLeft === 0 && rouletteState.isActive && !rouletteState.isSpinning && rouletteState.players.length >= 2) {
-      console.log('Автоматический запуск рулетки!');
-      spinRoulette();
-    }
-  }, [rouletteState.timeLeft, rouletteState.isActive, rouletteState.isSpinning]);
+  // --- Автоматический запуск рулетки теперь контролируется backend ---
 
   // --- Функции для загрузки данных ---
   const fetchShopGifts = async () => {
@@ -383,6 +377,12 @@ function App() {
           winner: data.winner
         };
         
+        // Если backend установил статус spinning, а у нас еще нет анимации - запускаем
+        if (data.status === 'spinning' && !rouletteState.isSpinning) {
+          console.log('🎯 Backend перевел в spinning, запускаем анимацию');
+          spinRoulette();
+        }
+        
         console.log('🔍 Setting roulette state:', newState);
         setRouletteState(newState);
       } else {
@@ -549,8 +549,9 @@ function App() {
                     const endPercentage = startPercentage + p.percentage;
                     return `${p.color} ${startPercentage}% ${endPercentage}%`;
                   }).join(', ') + ')',
-                transition: rouletteState.isSpinning ? 'transform 5s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
-                transform: rouletteState.isSpinning ? `rotate(${2160 + (rouletteState.spinSeed || 0)}deg)` : 'rotate(0deg)'
+                transition: rouletteState.isSpinning ? 'transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'transform 0.3s ease-out',
+                transform: rouletteState.isSpinning ? `rotate(${2160 + (rouletteState.spinSeed || 0)}deg)` : 'rotate(0deg)',
+                willChange: rouletteState.isSpinning ? 'transform' : 'auto' // Оптимизация GPU
               }}>
               
               {/* Игроки на рулетке */}
@@ -625,7 +626,10 @@ function App() {
                 transform: 'translate(-50%, -50%)',
                 width: '120px',
                 height: '120px',
-                backgroundColor: 'rgba(255,255,255,0.95)',
+                backgroundColor: rouletteState.players.length === 0 ? '#f5f5f5' : 
+                  rouletteState.timeLeft > 0 ? '#ff4444' : 
+                  rouletteState.isSpinning ? '#ff8c00' : 
+                  rouletteState.winner ? '#4CAF50' : '#2196F3',
                 borderRadius: '50%',
                 border: '4px solid #333',
                 display: 'flex',
@@ -634,44 +638,51 @@ function App() {
                 justifyContent: 'center',
                 fontSize: '14px',
                 fontWeight: 'bold',
-                textAlign: 'center'
+                textAlign: 'center',
+                color: 'white',
+                textShadow: '1px 1px 2px rgba(0,0,0,0.7)',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
               }}>
                 {rouletteState.players.length === 0 ? (
-                  <div style={{color: '#666'}}>
-                    <div>🎯</div>
-                    <div style={{fontSize: '12px', marginTop: '5px'}}>Ожидание игроков</div>
+                  <div style={{color: '#999'}}>
+                    <div style={{fontSize: '24px'}}>🎯</div>
+                    <div style={{fontSize: '12px', marginTop: '8px'}}>ОЖИДАНИЕ</div>
+                    <div style={{fontSize: '10px', marginTop: '2px'}}>ИГРОКОВ</div>
                   </div>
                 ) : rouletteState.timeLeft > 0 ? (
-                  <div style={{color: '#ff0000'}}>
-                    <div style={{fontSize: '32px'}}>{rouletteState.timeLeft}</div>
-                    <div style={{fontSize: '10px', marginTop: '5px'}}>секунд до спина</div>
+                  <div>
+                    <div style={{fontSize: '36px', fontWeight: 'bold'}}>{rouletteState.timeLeft}</div>
+                    <div style={{fontSize: '11px', marginTop: '2px'}}>СЕКУНД ДО</div>
+                    <div style={{fontSize: '11px'}}>ЗАПУСКА</div>
                   </div>
                 ) : rouletteState.isSpinning ? (
-                  <div style={{color: '#ff8c00'}}>
-                    <div style={{fontSize: '18px'}}>🎲</div>
-                    <div style={{fontSize: '12px', marginTop: '5px'}}>Крутим...</div>
+                  <div>
+                    <div style={{fontSize: '24px'}}>🎲</div>
+                    <div style={{fontSize: '14px', marginTop: '8px'}}>КРУТИМ</div>
+                    <div style={{fontSize: '10px', marginTop: '2px'}}>РУЛЕТКУ</div>
                   </div>
                 ) : rouletteState.winner ? (
-                  <div style={{color: '#00aa00'}}>
-                    <div style={{fontSize: '16px'}}>🎉</div>
-                    <div style={{fontSize: '10px', marginTop: '2px'}}>Победитель:</div>
-                    <div style={{fontSize: '11px', marginTop: '2px', fontWeight: 'bold'}}>{rouletteState.winner.username}</div>
+                  <div>
+                    <div style={{fontSize: '20px'}}>🎉</div>
+                    <div style={{fontSize: '11px', marginTop: '5px'}}>ПОБЕДИТЕЛЬ:</div>
+                    <div style={{fontSize: '12px', marginTop: '2px', fontWeight: 'bold'}}>{rouletteState.winner.username}</div>
                     {rouletteState.winner.wonGifts && rouletteState.winner.wonGifts.length > 0 && (
                       <div style={{fontSize: '9px', marginTop: '2px'}}>
                         {rouletteState.winner.wonGifts.length} подарков
                       </div>
                     )}
-                    {rouletteState.winner.totalWinValue && (
-                      <div style={{fontSize: '10px', marginTop: '2px', color: '#ff8c00'}}>
-                        {rouletteState.winner.totalWinValue} TON
-                      </div>
-                    )}
+                  </div>
+                ) : rouletteState.players.length >= 2 ? (
+                  <div>
+                    <div style={{fontSize: '20px'}}>⚡</div>
+                    <div style={{fontSize: '12px', marginTop: '5px'}}>ГОТОВ К</div>
+                    <div style={{fontSize: '12px'}}>ЗАПУСКУ</div>
                   </div>
                 ) : (
-                  <div style={{color: '#333'}}>
-                    <div style={{fontSize: '16px'}}>⚡</div>
-                    <div style={{fontSize: '11px', marginTop: '5px'}}>Игроков: {rouletteState.players.length}</div>
-                    <div style={{fontSize: '10px'}}>Ждем еще...</div>
+                  <div>
+                    <div style={{fontSize: '20px'}}>⏳</div>
+                    <div style={{fontSize: '11px', marginTop: '5px'}}>ИГРОКОВ: {rouletteState.players.length}/2</div>
+                    <div style={{fontSize: '10px', marginTop: '2px'}}>ЖДЕМ ЕЩЕ</div>
                   </div>
                 )}
               </div>

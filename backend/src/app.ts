@@ -174,8 +174,10 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
         // Проверяем, можно ли начать раунд
         if (state.status === 'waiting' && state.players.length >= 2) {
             console.log('🕒 Автоматически запускаем countdown - игроков >= 2');
+            console.log(`🔍 Переводим раунд ${state.roundId} в статус countdown`);
             await startRound(state.roundId);
             state.status = 'countdown';
+            state.startedAt = new Date().toISOString(); // Обновляем время старта
         }
 
 
@@ -186,6 +188,13 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
             timeLeft = Math.max(0, 25 - elapsed);
             
             console.log(`⏰ Countdown: осталось ${timeLeft} секунд из 25`);
+            
+            // Автоматически переводим в spinning если время истекло
+            if (timeLeft === 0) {
+                console.log('⚡ Время вышло! Переводим раунд в статус spinning');
+                await pool.query('UPDATE roulette_rounds SET status = $1 WHERE id = $2', ['spinning', state.roundId]);
+                state.status = 'spinning';
+            }
         }
 
         const responseData = {
