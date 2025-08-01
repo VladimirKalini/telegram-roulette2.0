@@ -190,6 +190,18 @@ const placeBet = async (roundId: number, userGiftId: number, userId: number) => 
   try {
     await client.query('BEGIN');
     
+    // Проверяем, не поставлен ли уже этот подарок
+    const existingBet = await client.query('SELECT id FROM roulette_bets WHERE user_gift_id = $1', [userGiftId]);
+    if (existingBet.rows.length > 0) {
+      throw new Error('Этот подарок уже поставлен в рулетку');
+    }
+    
+    // Проверяем, что подарок не помечен как поставленный
+    const giftCheck = await client.query('SELECT is_bet FROM user_gifts WHERE id = $1', [userGiftId]);
+    if (giftCheck.rows.length > 0 && giftCheck.rows[0].is_bet) {
+      throw new Error('Этот подарок уже поставлен');
+    }
+    
     // Добавляем ставку
     const queryText = `
       INSERT INTO roulette_bets (round_id, user_gift_id, user_id)
@@ -332,11 +344,16 @@ const finishRound = async (roundId: number, winnerId: number) => {
 
 // Передать все подарки победителю
 const transferAllGiftsToWinner = async (roundId: number, winnerId: number) => {
+    console.log(`🎁 Передаем все подарки раунда ${roundId} победителю ${winnerId}`);
+    
     // Получаем все ставки раунда
     const bets = await getBetsForRound(roundId);
+    console.log(`🎁 Найдено ${bets.length} подарков для передачи`);
     
     // Передаем каждый подарок победителю
     for (const bet of bets) {
+        console.log(`🎁 Передаем подарок ${bet.gift_name} (ID: ${bet.user_gift_id}) от пользователя ${bet.user_id} к ${winnerId}`);
+        
         const queryText = `
             UPDATE user_gifts 
             SET user_id = $1, is_bet = FALSE 
@@ -344,6 +361,8 @@ const transferAllGiftsToWinner = async (roundId: number, winnerId: number) => {
         `;
         await pool.query(queryText, [winnerId, bet.user_gift_id]);
     }
+    
+    console.log(`🎁 Все подарки переданы победителю ${winnerId}`);
 };
 
 // Проверить, можно ли начать раунд

@@ -283,6 +283,10 @@ app.post('/api/roulette/spin', async (req: Request, res: Response) => {
         console.log(`🎉 Победитель: ${winner.username} (шанс: ${winner.percentage.toFixed(1)}%, число: ${randomNumber.toFixed(2)})`);
         console.log(`🎁 Выиграл ${wonGifts.length} подарков на сумму ${totalWinValue.toFixed(2)} TON`);
         
+        // Создаем новый раунд для следующей игры
+        await pool.query("INSERT INTO roulette_rounds (status) VALUES ('waiting')");
+        console.log(`🔄 Создан новый раунд для следующей игры`);
+        
         res.status(200).json({
             winner: {
                 ...winner,
