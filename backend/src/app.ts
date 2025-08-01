@@ -158,7 +158,7 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
     try {
         console.log('🔍 API /api/roulette/state вызван');
         const state = await getRouletteState();
-        console.log('🔍 State from getRouletteState:', {
+        console.log('🔍 State from getRouletteState BEFORE countdown check:', {
             roundId: state.roundId,
             status: state.status,
             playersCount: state.players.length,
@@ -211,7 +211,7 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
             }
         };
         
-        console.log('🔍 Отправляем на frontend:', JSON.stringify({
+        console.log('🔍 FINAL state отправляем на frontend:', JSON.stringify({
             status: responseData.status,
             playersCount: responseData.players.length,
             players: responseData.players.map(p => ({ 
@@ -221,7 +221,8 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
                 percentage: p.percentage,
                 color: p.color 
             })),
-            timeLeft: responseData.timeLeft
+            timeLeft: responseData.timeLeft,
+            isActive: responseData.isActive
         }, null, 2));
         
         res.status(200).json(responseData);

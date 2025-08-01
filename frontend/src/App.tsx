@@ -349,6 +349,12 @@ function App() {
       if (response.ok) {
         const data = await response.json();
         console.log('🔍 RAW Backend data:', JSON.stringify(data, null, 2));
+        console.log('🔍 Current rouletteState before update:', {
+          players: rouletteState.players.length,
+          isActive: rouletteState.isActive,
+          isSpinning: rouletteState.isSpinning,
+          timeLeft: rouletteState.timeLeft
+        });
         
         // Используем данные напрямую из backend (поле players, не participants)
         const players = data.players ? data.players.map((p: any) => ({
@@ -377,14 +383,17 @@ function App() {
           winner: data.winner
         };
         
+        console.log('🔍 Setting roulette state:', newState);
+        setRouletteState(newState);
+        
         // Если backend установил статус spinning, а у нас еще нет анимации - запускаем
         if (data.status === 'spinning' && !rouletteState.isSpinning) {
           console.log('🎯 Backend перевел в spinning, запускаем анимацию');
-          spinRoulette();
+          // Используем setTimeout чтобы состояние успело обновиться
+          setTimeout(() => {
+            spinRoulette();
+          }, 100);
         }
-        
-        console.log('🔍 Setting roulette state:', newState);
-        setRouletteState(newState);
       } else {
         console.error('❌ Response not ok:', response.status, response.statusText);
       }
@@ -549,7 +558,7 @@ function App() {
                     const endPercentage = startPercentage + p.percentage;
                     return `${p.color} ${startPercentage}% ${endPercentage}%`;
                   }).join(', ') + ')',
-                transition: rouletteState.isSpinning ? 'transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'transform 0.3s ease-out',
+                transition: rouletteState.isSpinning ? 'transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
                 transform: rouletteState.isSpinning ? `rotate(${2160 + (rouletteState.spinSeed || 0)}deg)` : 'rotate(0deg)',
                 willChange: rouletteState.isSpinning ? 'transform' : 'auto' // Оптимизация GPU
               }}>
