@@ -391,10 +391,53 @@ function App() {
         
         // Если backend установил статус spinning, а у нас еще нет анимации - запускаем
         if (data.status === 'spinning' && !rouletteState.isSpinning) {
-          console.log('🎯 Backend перевел в spinning, запускаем анимацию');
-          // Используем setTimeout чтобы состояние успело обновиться
-          setTimeout(() => {
-            spinRoulette();
+          console.log('🎯 Backend перевел в spinning, вызываем /api/roulette/spin');
+          // Сразу запускаем спин через API
+          setTimeout(async () => {
+            try {
+              const spinResponse = await fetch(`${API_BASE_URL}/api/roulette/spin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+              });
+              
+              if (spinResponse.ok) {
+                const result = await spinResponse.json();
+                console.log('🎯 Результат спина:', result);
+                
+                // Устанавливаем состояние спина с результатом
+                setRouletteState(prev => ({ 
+                  ...prev, 
+                  isSpinning: true,
+                  spinSeed: result.spinSeed 
+                }));
+                
+                // Ждем завершения анимации
+                setTimeout(() => {
+                  const announcement = `🎉 ПОБЕДИТЕЛЬ: ${result.winner.username}! Выиграл ${result.winner.wonGifts?.length || 0} подарков на сумму ${result.winner.totalWinValue || '0'} TON!`;
+                  
+                  setStatusMessage(`🎉 ${result.spinResult}`);
+                  setWinnerAnnouncement(announcement);
+                  setRouletteState(prev => ({ 
+                    ...prev, 
+                    isSpinning: false, 
+                    winner: result.winner 
+                  }));
+                  
+                  setShowWinnerModal(true);
+                  
+                  setTimeout(() => {
+                    setWinnerAnnouncement('');
+                  }, 5000);
+                  
+                  setTimeout(() => {
+                    fetchRouletteState();
+                    fetchMyGifts();
+                  }, 2000);
+                }, 7000);
+              }
+            } catch (e) {
+              console.error('Ошибка автоматического спина:', e);
+            }
           }, 100);
         }
       } else {
