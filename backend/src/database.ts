@@ -55,10 +55,22 @@ const createUserGiftsTable = async () => {
       id SERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id),
       gift_id INTEGER NOT NULL REFERENCES gifts(id),
+      is_bet BOOLEAN DEFAULT FALSE,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `;
   await pool.query(queryText);
+  
+  // Добавляем колонку is_bet если её нет (для существующих таблиц)
+  try {
+    await pool.query(`
+      ALTER TABLE user_gifts 
+      ADD COLUMN IF NOT EXISTS is_bet BOOLEAN DEFAULT FALSE;
+    `);
+    console.log('✅ Колонка is_bet добавлена в user_gifts');
+  } catch (error) {
+    console.log('ℹ️ Колонка is_bet уже существует или произошла ошибка:', error);
+  }
 };
 
 const createRoundsTable = async () => {
@@ -131,11 +143,11 @@ const grantGiftToUser = async (userId: number, giftId: number) => {
 
 const getUserGifts = async (userId: number) => {
   const queryText = `
-    -- Выбираем только те подарки, которые еще не были поставлены в рулетку
-    SELECT ug.id as user_gift_id, g.id, g.name, g.description, g.price_ton FROM user_gifts ug
+    -- Выбираем только те подарки, которые не поставлены в активных раундах
+    SELECT ug.id as user_gift_id, g.id, g.name, g.description, g.price_ton 
+    FROM user_gifts ug
     JOIN gifts g ON ug.gift_id = g.id
-    LEFT JOIN roulette_bets rb ON ug.id = rb.user_gift_id
-    WHERE ug.user_id = $1 AND rb.id IS NULL;
+    WHERE ug.user_id = $1 AND ug.is_bet = FALSE;
   `;
   const result = await pool.query(queryText, [userId]);
   return result.rows;
@@ -174,11 +186,27 @@ const getCurrentRound = async () => {
 };
 
 const placeBet = async (roundId: number, userGiftId: number, userId: number) => {
-  const queryText = `
-    INSERT INTO roulette_bets (round_id, user_gift_id, user_id)
-    VALUES ($1, $2, $3);
-  `;
-  await pool.query(queryText, [roundId, userGiftId, userId]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    
+    // Добавляем ставку
+    const queryText = `
+      INSERT INTO roulette_bets (round_id, user_gift_id, user_id)
+      VALUES ($1, $2, $3);
+    `;
+    await client.query(queryText, [roundId, userGiftId, userId]);
+    
+    // Помечаем подарок как поставленный
+    await client.query('UPDATE user_gifts SET is_bet = TRUE WHERE id = $1', [userGiftId]);
+    
+    await client.query('COMMIT');
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 };
 
 const getBetsForRound = async (roundId: number) => {

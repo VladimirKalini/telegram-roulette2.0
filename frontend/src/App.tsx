@@ -52,6 +52,7 @@ function App() {
   const [selectedGifts, setSelectedGifts] = useState<Gift[]>([]);
   const [showGiftSelector, setShowGiftSelector] = useState<boolean>(false);
   const [showWinnerModal, setShowWinnerModal] = useState<boolean>(false);
+  const [winnerAnnouncement, setWinnerAnnouncement] = useState<string>('');
   const [rouletteState, setRouletteState] = useState<RouletteState>({
     isActive: false,
     players: [],
@@ -113,10 +114,12 @@ function App() {
     let interval: NodeJS.Timeout | null = null;
     
     if (view === 'roulette' && !rouletteState.isSpinning) {
-      // Обновляем состояние рулетки только когда НЕ крутится
+      // Если идет обратный отсчет, обновляем каждую секунду, иначе каждые 2 секунды
+      const intervalTime = rouletteState.isActive ? 1000 : 2000;
+      
       interval = setInterval(() => {
         fetchRouletteState();
-      }, 2000);
+      }, intervalTime);
       
       // Начальная загрузка
       fetchRouletteState();
@@ -125,7 +128,7 @@ function App() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [view, rouletteState.isSpinning]); // Добавляем isSpinning в зависимости
+  }, [view, rouletteState.isSpinning, rouletteState.isActive]); // Добавляем isActive в зависимости
 
   // --- Автоматический запуск рулетки теперь контролируется backend ---
 
@@ -423,9 +426,12 @@ function App() {
           spinSeed: result.spinSeed 
         }));
         
-        // Ждем завершения анимации (5 секунд)
+        // Ждем завершения анимации (7 секунд)
         setTimeout(() => {
+          const announcement = `🎉 ПОБЕДИТЕЛЬ: ${result.winner.username}! Выиграл ${result.winner.wonGifts?.length || 0} подарков на сумму ${result.winner.totalWinValue || '0'} TON!`;
+          
           setStatusMessage(`🎉 ${result.spinResult}`);
+          setWinnerAnnouncement(announcement);
           setRouletteState(prev => ({ 
             ...prev, 
             isSpinning: false, 
@@ -435,12 +441,17 @@ function App() {
           // Показываем модальное окно с результатами
           setShowWinnerModal(true);
           
+          // Убираем объявление через 5 секунд
+          setTimeout(() => {
+            setWinnerAnnouncement('');
+          }, 5000);
+          
           // Обновляем состояние через 2 секунды
           setTimeout(() => {
             fetchRouletteState();
             fetchMyGifts();
           }, 2000);
-        }, 5000); // Увеличили до 5 секунд
+        }, 7000); // Обновили до 7 секунд
         
       } else {
         const errorResult = await response.json();
@@ -558,8 +569,8 @@ function App() {
                     const endPercentage = startPercentage + p.percentage;
                     return `${p.color} ${startPercentage}% ${endPercentage}%`;
                   }).join(', ') + ')',
-                transition: rouletteState.isSpinning ? 'transform 5s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
-                transform: rouletteState.isSpinning ? `rotate(${2160 + (rouletteState.spinSeed || 0)}deg)` : 'rotate(0deg)',
+                transition: rouletteState.isSpinning ? 'transform 7s cubic-bezier(0.25, 0.1, 0.25, 1.0)' : 'none',
+                transform: rouletteState.isSpinning ? `rotate(${3600 + (rouletteState.spinSeed || 0)}deg)` : 'rotate(0deg)',
                 willChange: rouletteState.isSpinning ? 'transform' : 'auto' // Оптимизация GPU
               }}>
               
@@ -1154,6 +1165,26 @@ function App() {
         <button onClick={() => changeView('inventory')} className={view === 'inventory' ? 'active' : ''}>Инвентарь</button>
       </nav>
 
+      {winnerAnnouncement && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#4CAF50',
+          color: 'white',
+          padding: '15px 25px',
+          borderRadius: '25px',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          zIndex: 9999,
+          boxShadow: '0 4px 20px rgba(76, 175, 80, 0.4)',
+          animation: 'fadeInScale 0.5s ease-out'
+        }}>
+          {winnerAnnouncement}
+        </div>
+      )}
+      
       {statusMessage && <div className="status-message">{statusMessage}</div>}
       {debugInfo && <div style={{background: '#f0f0f0', padding: '10px', fontSize: '12px', marginBottom: '10px', color: '#000'}}>{debugInfo}</div>}
       

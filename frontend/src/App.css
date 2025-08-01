@@ -222,7 +222,18 @@ h1 {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
-
-
-
+/* Анимация для объявления победителя */
+@keyframes fadeInScale {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.8);
+  }
+  50% {
+    transform: translateX(-50%) scale(1.1);  
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
 

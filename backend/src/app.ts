@@ -185,9 +185,9 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
         let timeLeft = 0;
         if (state.status === 'countdown' && state.startedAt) {
             const elapsed = Math.floor((Date.now() - new Date(state.startedAt).getTime()) / 1000);
-            timeLeft = Math.max(0, 25 - elapsed);
+            timeLeft = Math.max(0, 10 - elapsed); // Изменили с 25 на 10 секунд
             
-            console.log(`⏰ Countdown: осталось ${timeLeft} секунд из 25`);
+            console.log(`⏰ Countdown: осталось ${timeLeft} секунд из 10`);
             
             // Автоматически переводим в spinning если время истекло
             if (timeLeft === 0) {
@@ -294,6 +294,32 @@ app.post('/api/roulette/spin', async (req: Request, res: Response) => {
         
     } catch (error) {
         console.error('Error spinning roulette:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// 8. Очистить раунд (для тестирования)  
+app.post('/api/roulette/reset', async (req: Request, res: Response) => {
+    try {
+        console.log('🔄 Сброс раунда - начинаем очистку');
+        
+        // Получаем текущий раунд
+        const currentRound = await getCurrentRound();
+        
+        // Удаляем все ставки
+        await pool.query('DELETE FROM roulette_bets WHERE round_id = $1', [currentRound.id]);
+        
+        // Сбрасываем флаги is_bet для всех подарков
+        await pool.query('UPDATE user_gifts SET is_bet = FALSE');
+        
+        // Переводим раунд в статус waiting
+        await pool.query('UPDATE roulette_rounds SET status = $1, started_at = NULL, finished_at = NULL, winner_id = NULL WHERE id = $2', ['waiting', currentRound.id]);
+        
+        console.log(`🔄 Раунд ${currentRound.id} успешно очищен`);
+        res.status(200).json({ message: 'Раунд успешно очищен' });
+        
+    } catch (error) {
+        console.error('❌ Ошибка при сбросе раунда:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 });
