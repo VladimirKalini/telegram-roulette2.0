@@ -92,6 +92,33 @@ function App() {
     initialLoad();
   }, [user]);
 
+  // --- Автоматический polling рулетки ---
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    
+    if (view === 'roulette') {
+      // Обновляем состояние рулетки каждые 2 секунды
+      interval = setInterval(() => {
+        fetchRouletteState();
+      }, 2000);
+      
+      // Начальная загрузка
+      fetchRouletteState();
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [view]);
+
+  // --- Автоматический запуск рулетки ---
+  useEffect(() => {
+    if (rouletteState.timeLeft === 0 && rouletteState.isActive && !rouletteState.isSpinning && rouletteState.players.length >= 2) {
+      console.log('Автоматический запуск рулетки!');
+      spinRoulette();
+    }
+  }, [rouletteState.timeLeft, rouletteState.isActive, rouletteState.isSpinning]);
+
   // --- Функции для загрузки данных ---
   const fetchShopGifts = async () => {
     const response = await fetch(`${API_BASE_URL}/api/store/gifts`);
@@ -318,12 +345,79 @@ function App() {
         setRouletteState({
           isActive: data.status === 'countdown',
           players,
-          timeLeft: data.status === 'countdown' ? 20 : 0,
-          isSpinning: data.status === 'spinning'
+          timeLeft: data.timeLeft || 0,
+          isSpinning: data.status === 'spinning',
+          winner: data.winner
         });
       }
     } catch (e) {
       console.error('Ошибка получения состояния рулетки:', e);
+    }
+  };
+
+  // Запустить рулетку
+  const spinRoulette = async () => {
+    try {
+      setStatusMessage('Крутим рулетку...');
+      setRouletteState(prev => ({ ...prev, isSpinning: true }));
+      
+      const response = await fetch(`${API_BASE_URL}/api/roulette/spin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Ждем завершения анимации
+        setTimeout(() => {
+          setStatusMessage(`🎉 ${result.spinResult}`);
+          setRouletteState(prev => ({ 
+            ...prev, 
+            isSpinning: false, 
+            winner: result.winner 
+          }));
+          
+          // Обновляем состояние через 2 секунды
+          setTimeout(() => {
+            fetchRouletteState();
+            fetchMyGifts();
+          }, 2000);
+        }, 3000);
+        
+      } else {
+        const errorResult = await response.json();
+        setStatusMessage('Ошибка: ' + errorResult.error);
+        setRouletteState(prev => ({ ...prev, isSpinning: false }));
+      }
+    } catch (e) {
+      setStatusMessage('Ошибка запуска рулетки');
+      setRouletteState(prev => ({ ...prev, isSpinning: false }));
+    }
+  };
+
+  // Очистить раунд (для тестирования)
+  const resetRound = async () => {
+    try {
+      setStatusMessage('Очищаем раунд...');
+      
+      const response = await fetch(`${API_BASE_URL}/api/roulette/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (response.ok) {
+        setStatusMessage('Раунд очищен!');
+        
+        // Обновляем все данные
+        await fetchRouletteState();
+        await fetchMyGifts();
+      } else {
+        const result = await response.json();
+        setStatusMessage('Ошибка очистки: ' + result.error);
+      }
+    } catch (e) {
+      setStatusMessage('Ошибка очистки раунда');
     }
   };
 
@@ -374,53 +468,115 @@ function App() {
         return (
           <div style={{position: 'relative'}}>
             <div className="roulette-wheel" style={{
-              width: '300px', 
-              height: '300px', 
-              border: '5px solid #333', 
+              width: '350px', 
+              height: '350px', 
+              border: '8px solid #333', 
               borderRadius: '50%', 
               margin: '20px auto',
+              position: 'relative',
               background: rouletteState.players.length === 0 ? '#f0f0f0' : 'conic-gradient(' + 
-                rouletteState.players.map((p, i) => 
-                  `${p.color} ${i === 0 ? 0 : rouletteState.players.slice(0, i).reduce((sum, player) => sum + player.percentage, 0)}% ${rouletteState.players.slice(0, i + 1).reduce((sum, player) => sum + player.percentage, 0)}%`
-                ).join(', ') + ')'
+                rouletteState.players.map((p, i) => {
+                  const startPercentage = rouletteState.players.slice(0, i).reduce((sum, player) => sum + player.percentage, 0);
+                  const endPercentage = startPercentage + p.percentage;
+                  return `${p.color} ${startPercentage}% ${endPercentage}%`;
+                }).join(', ') + ')',
+              transition: rouletteState.isSpinning ? 'transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
+              transform: rouletteState.isSpinning ? 'rotate(1800deg)' : 'rotate(0deg)'
             }}>
-              {rouletteState.players.length === 0 ? (
-                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666'}}>
-                  Ожидание игроков...
-                </div>
-              ) : (
+              
+              {/* Игроки на рулетке */}
+              {rouletteState.players.length > 0 && (
                 <div style={{position: 'relative', width: '100%', height: '100%'}}>
-                  {rouletteState.players.map((player, index) => (
-                    <div key={player.userId} style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: `rotate(${rouletteState.players.slice(0, index).reduce((sum, p) => sum + p.percentage, 0) + player.percentage / 2}deg) translateY(-120px)`,
-                      transformOrigin: '0 0',
-                      color: 'white',
-                      fontWeight: 'bold',
-                      textAlign: 'center',
-                      fontSize: '12px'
-                    }}>
-                      <div>{player.username}</div>
-                      <div>{player.totalBet.toFixed(1)} TON</div>
-                    </div>
-                  ))}
-                  {rouletteState.timeLeft > 0 && (
-                    <div style={{
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                      fontSize: '24px',
-                      fontWeight: 'bold',
-                      color: '#ff0000'
-                    }}>
-                      {rouletteState.timeLeft}
-                    </div>
-                  )}
+                  {rouletteState.players.map((player, index) => {
+                    // Вычисляем начальный угол для этого игрока
+                    const startAngle = rouletteState.players.slice(0, index).reduce((sum, p) => sum + (p.percentage * 3.6), 0);
+                    // Центральный угол зоны игрока
+                    const centerAngle = startAngle + (player.percentage * 3.6) / 2;
+                    
+                    return (
+                      <div key={player.userId} style={{
+                        position: 'absolute',
+                        top: '50%',
+                        left: '50%',
+                        transform: `rotate(${centerAngle}deg) translateY(-140px) rotate(-${centerAngle}deg)`,
+                        transformOrigin: '0 0',
+                        color: 'white',
+                        fontWeight: 'bold',
+                        textAlign: 'center',
+                        fontSize: '12px',
+                        textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                      }}>
+                        <div>{player.username}</div>
+                        <div>{player.totalBet.toFixed(1)} TON</div>
+                        <div>{player.percentage.toFixed(1)}%</div>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
+
+              {/* Центральный круг */}
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '120px',
+                height: '120px',
+                backgroundColor: 'rgba(255,255,255,0.95)',
+                borderRadius: '50%',
+                border: '4px solid #333',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                textAlign: 'center'
+              }}>
+                {rouletteState.players.length === 0 ? (
+                  <div style={{color: '#666'}}>
+                    <div>🎯</div>
+                    <div style={{fontSize: '12px', marginTop: '5px'}}>Ожидание игроков</div>
+                  </div>
+                ) : rouletteState.timeLeft > 0 ? (
+                  <div style={{color: '#ff0000'}}>
+                    <div style={{fontSize: '32px'}}>{rouletteState.timeLeft}</div>
+                    <div style={{fontSize: '10px', marginTop: '5px'}}>секунд до спина</div>
+                  </div>
+                ) : rouletteState.isSpinning ? (
+                  <div style={{color: '#ff8c00'}}>
+                    <div style={{fontSize: '18px'}}>🎲</div>
+                    <div style={{fontSize: '12px', marginTop: '5px'}}>Крутим...</div>
+                  </div>
+                ) : rouletteState.winner ? (
+                  <div style={{color: '#00aa00'}}>
+                    <div style={{fontSize: '16px'}}>🎉</div>
+                    <div style={{fontSize: '10px', marginTop: '2px'}}>Победитель:</div>
+                    <div style={{fontSize: '12px', marginTop: '2px'}}>{rouletteState.winner.username}</div>
+                  </div>
+                ) : (
+                  <div style={{color: '#333'}}>
+                    <div style={{fontSize: '16px'}}>⚡</div>
+                    <div style={{fontSize: '11px', marginTop: '5px'}}>Игроков: {rouletteState.players.length}</div>
+                    <div style={{fontSize: '10px'}}>Ждем еще...</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Указатель */}
+              <div style={{
+                position: 'absolute',
+                top: '-10px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                width: '0',
+                height: '0',
+                borderLeft: '15px solid transparent',
+                borderRight: '15px solid transparent',
+                borderTop: '30px solid #ff0000',
+                zIndex: 10
+              }}></div>
             </div>
             
             <div style={{textAlign: 'center', marginBottom: '20px'}}>
@@ -435,10 +591,26 @@ function App() {
                   border: 'none',
                   borderRadius: '5px',
                   cursor: rouletteState.isSpinning ? 'not-allowed' : 'pointer',
-                  opacity: rouletteState.isSpinning ? 0.5 : 1
+                  opacity: rouletteState.isSpinning ? 0.5 : 1,
+                  marginRight: '10px'
                 }}
               >
                 Выбрать подарки ({selectedGifts.length})
+              </button>
+              
+              <button 
+                onClick={resetRound}
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '16px',
+                  backgroundColor: '#ff4757',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  cursor: 'pointer'
+                }}
+              >
+                🔄 Очистить раунд
               </button>
             </div>
             
