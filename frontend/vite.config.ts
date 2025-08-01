@@ -18,17 +18,20 @@ export default defineConfig({
     })
   ],
   build: {
-    // Исключаем использование eval в production
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: false,
-        drop_debugger: true,
-      },
-    },
+    // Отключаем минификацию для экономии RAM
+    minify: false,
+    // Уменьшаем размер чанков
     rollupOptions: {
       external: ['vm'],
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ton: ['ton', 'ton-core', 'ton-crypto'],
+        },
+      },
     },
+    // Ограничиваем параллельность
+    chunkSizeWarningLimit: 1000,
   },
   server: {
     host: true,

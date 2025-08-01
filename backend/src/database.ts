@@ -56,10 +56,22 @@ const createRoundsTable = async () => {
         status VARCHAR(50) NOT NULL DEFAULT 'waiting',
         winner_id BIGINT REFERENCES users(id),
         created_at TIMESTAMPTZ DEFAULT NOW(),
+        started_at TIMESTAMPTZ,
         finished_at TIMESTAMPTZ
     );
   `;
   await pool.query(queryText);
+  
+  // Добавляем колонку started_at если её нет (для существующих таблиц)
+  try {
+    await pool.query(`
+      ALTER TABLE roulette_rounds 
+      ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+    `);
+    console.log('✅ Колонка started_at добавлена в roulette_rounds');
+  } catch (error) {
+    console.log('ℹ️ Колонка started_at уже существует или произошла ошибка:', error);
+  }
 };
 
 const createBetsTable = async () => {
