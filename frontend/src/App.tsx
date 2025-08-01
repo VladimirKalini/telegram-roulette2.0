@@ -23,10 +23,13 @@ type View = 'shop' | 'inventory' | 'roulette';
 interface RoulettePlayer {
   userId: number;
   username: string;
+  photoUrl?: string;
   totalBet: number;
   gifts: Gift[];
   color: string;
   percentage: number;
+  wonGifts?: Array<{name: string; price_ton: string}>;
+  totalWinValue?: string;
 }
 
 interface RouletteState {
@@ -35,6 +38,7 @@ interface RouletteState {
   timeLeft: number;
   isSpinning: boolean;
   winner?: RoulettePlayer;
+  spinSeed?: number;
 }
 
 function App() {
@@ -47,6 +51,7 @@ function App() {
   const [view, setView] = useState<View>('roulette'); // Начинаем с рулетки
   const [selectedGifts, setSelectedGifts] = useState<Gift[]>([]);
   const [showGiftSelector, setShowGiftSelector] = useState<boolean>(false);
+  const [showWinnerModal, setShowWinnerModal] = useState<boolean>(false);
   const [rouletteState, setRouletteState] = useState<RouletteState>({
     isActive: false,
     players: [],
@@ -56,6 +61,13 @@ function App() {
   
   // Цвета для игроков
   const playerColors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+  
+  // Функция для генерации иконки пользователя
+  const getUserIcon = (username: string) => {
+    const icons = ['👤', '👨', '👩', '🧑', '👦', '👧', '🤵', '👸', '🤴', '👮'];
+    const index = username.length % icons.length;
+    return icons[index];
+  };
 
   const wallet = useTonWallet();
   const [tonConnectUI] = useTonConnectUI();
@@ -78,7 +90,11 @@ function App() {
           await fetch(`${API_BASE_URL}/api/users/sync`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id: user.id, username: user.username }),
+            body: JSON.stringify({ 
+              id: user.id, 
+              username: user.username,
+              photoUrl: user.photo_url
+            }),
           });
         }
         // Загружаем товары магазина
@@ -97,10 +113,10 @@ function App() {
     let interval: NodeJS.Timeout | null = null;
     
     if (view === 'roulette') {
-      // Обновляем состояние рулетки каждые 2 секунды
+      // Обновляем состояние рулетки каждую секунду для лучшей синхронизации
       interval = setInterval(() => {
         fetchRouletteState();
-      }, 2000);
+      }, 1000);
       
       // Начальная загрузка
       fetchRouletteState();
@@ -316,9 +332,14 @@ function App() {
       
       console.log('🎯 Ставки размещены, обновляем данные...');
       
-      // Обновляем состояние рулетки
+      // Обновляем состояние рулетки немедленно
       await fetchRouletteState();
       await fetchMyGifts();
+      
+      // Дополнительное обновление через полсекунды для синхронизации с другими клиентами
+      setTimeout(async () => {
+        await fetchRouletteState();
+      }, 500);
       
       console.log('🎯 Данные обновлены после ставки');
       
@@ -339,6 +360,7 @@ function App() {
         const players = data.players ? data.players.map((p: any) => ({
           userId: parseInt(p.userId),
           username: p.username,
+          photoUrl: p.photoUrl,
           totalBet: p.totalBet,
           percentage: p.percentage,
           color: p.color || '#FF6B6B' // fallback цвет если нет
@@ -385,7 +407,14 @@ function App() {
       if (response.ok) {
         const result = await response.json();
         
-        // Ждем завершения анимации (4 секунды)
+        // Сразу устанавливаем seed для синхронизации анимации
+        setRouletteState(prev => ({ 
+          ...prev, 
+          isSpinning: true,
+          spinSeed: result.spinSeed 
+        }));
+        
+        // Ждем завершения анимации (5 секунд)
         setTimeout(() => {
           setStatusMessage(`🎉 ${result.spinResult}`);
           setRouletteState(prev => ({ 
@@ -394,12 +423,15 @@ function App() {
             winner: result.winner 
           }));
           
+          // Показываем модальное окно с результатами
+          setShowWinnerModal(true);
+          
           // Обновляем состояние через 2 секунды
           setTimeout(() => {
             fetchRouletteState();
             fetchMyGifts();
           }, 2000);
-        }, 4000); // Увеличили до 4 секунд под новую анимацию
+        }, 5000); // Увеличили до 5 секунд
         
       } else {
         const errorResult = await response.json();
@@ -424,6 +456,7 @@ function App() {
       
       if (response.ok) {
         setStatusMessage('Раунд очищен!');
+        setShowWinnerModal(false); // Закрываем окно результатов
         
         // Обновляем все данные
         await fetchRouletteState();
@@ -516,8 +549,8 @@ function App() {
                     const endPercentage = startPercentage + p.percentage;
                     return `${p.color} ${startPercentage}% ${endPercentage}%`;
                   }).join(', ') + ')',
-                transition: rouletteState.isSpinning ? 'transform 4s cubic-bezier(0.17, 0.67, 0.12, 0.99)' : 'none',
-                transform: rouletteState.isSpinning ? `rotate(${1800 + Math.random() * 360}deg)` : 'rotate(0deg)'
+                transition: rouletteState.isSpinning ? 'transform 5s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
+                transform: rouletteState.isSpinning ? `rotate(${2160 + (rouletteState.spinSeed || 0)}deg)` : 'rotate(0deg)'
               }}>
               
               {/* Игроки на рулетке */}
@@ -529,6 +562,8 @@ function App() {
                     // Центральный угол зоны игрока
                     const centerAngle = startAngle + (player.percentage * 3.6) / 2;
                     
+                    const isCurrentUser = user && player.userId === user.id;
+                    
                     return (
                       <div key={player.userId} style={{
                         position: 'absolute',
@@ -536,15 +571,46 @@ function App() {
                         left: '50%',
                         transform: `rotate(${centerAngle}deg) translateY(-140px) rotate(-${centerAngle}deg)`,
                         transformOrigin: '0 0',
-                        color: 'white',
-                        fontWeight: 'bold',
                         textAlign: 'center',
-                        fontSize: '12px',
-                        textShadow: '1px 1px 2px rgba(0,0,0,0.8)'
+                        fontSize: '24px',
+                        filter: isCurrentUser ? 'drop-shadow(0 0 8px #ffff00)' : 'drop-shadow(2px 2px 4px rgba(0,0,0,0.8))'
                       }}>
-                        <div>{player.username}</div>
-                        <div>{player.totalBet.toFixed(1)} TON</div>
-                        <div>{player.percentage.toFixed(1)}%</div>
+                        <div style={{
+                          backgroundColor: isCurrentUser ? 'rgba(255,255,0,0.2)' : 'rgba(255,255,255,0.1)', 
+                          borderRadius: '50%', 
+                          width: '40px', 
+                          height: '40px', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center',
+                          border: isCurrentUser ? '2px solid #ffff00' : '2px solid rgba(255,255,255,0.3)',
+                          overflow: 'hidden'
+                        }}>
+                          {player.photoUrl ? (
+                            <img 
+                              src={player.photoUrl} 
+                              alt={player.username}
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                objectFit: 'cover',
+                                borderRadius: '50%'
+                              }}
+                              onError={(e) => {
+                                // Fallback to emoji if image fails to load
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  parent.innerHTML = getUserIcon(player.username);
+                                  parent.style.fontSize = '24px';
+                                }
+                              }}
+                            />
+                          ) : (
+                            getUserIcon(player.username)
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -589,7 +655,17 @@ function App() {
                   <div style={{color: '#00aa00'}}>
                     <div style={{fontSize: '16px'}}>🎉</div>
                     <div style={{fontSize: '10px', marginTop: '2px'}}>Победитель:</div>
-                    <div style={{fontSize: '12px', marginTop: '2px'}}>{rouletteState.winner.username}</div>
+                    <div style={{fontSize: '11px', marginTop: '2px', fontWeight: 'bold'}}>{rouletteState.winner.username}</div>
+                    {rouletteState.winner.wonGifts && rouletteState.winner.wonGifts.length > 0 && (
+                      <div style={{fontSize: '9px', marginTop: '2px'}}>
+                        {rouletteState.winner.wonGifts.length} подарков
+                      </div>
+                    )}
+                    {rouletteState.winner.totalWinValue && (
+                      <div style={{fontSize: '10px', marginTop: '2px', color: '#ff8c00'}}>
+                        {rouletteState.winner.totalWinValue} TON
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div style={{color: '#333'}}>
@@ -637,6 +713,173 @@ function App() {
                 🔄 Очистить раунд
               </button>
             </div>
+            
+            {/* Список игроков */}
+            {rouletteState.players.length > 0 && (
+              <div style={{
+                backgroundColor: '#f8f9fa',
+                borderRadius: '15px',
+                padding: '20px',
+                marginTop: '20px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <h3 style={{
+                  color: '#333',
+                  textAlign: 'center',
+                  marginBottom: '20px',
+                  fontSize: '18px',
+                  margin: '0 0 20px 0'
+                }}>
+                  🎮 Игроки в раунде ({rouletteState.players.length}/5)
+                </h3>
+                
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                  gap: '15px'
+                }}>
+                  {rouletteState.players.map((player, index) => {
+                    const isCurrentUser = user && player.userId === user.id;
+                    
+                    return (
+                      <div key={player.userId} style={{
+                        backgroundColor: isCurrentUser ? '#fff9c4' : 'white',
+                        border: `2px solid ${isCurrentUser ? '#ffd700' : player.color}`,
+                        borderRadius: '12px',
+                        padding: '15px',
+                        position: 'relative'
+                      }}>
+                        {isCurrentUser && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '10px',
+                            backgroundColor: '#ffd700',
+                            color: '#333',
+                            padding: '4px 8px',
+                            borderRadius: '10px',
+                            fontSize: '12px',
+                            fontWeight: 'bold'
+                          }}>
+                            ВЫ
+                          </div>
+                        )}
+                        
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          marginBottom: '12px'
+                        }}>
+                          <div style={{
+                            fontSize: '24px',
+                            marginRight: '12px',
+                            backgroundColor: player.color,
+                            borderRadius: '50%',
+                            width: '40px',
+                            height: '40px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            overflow: 'hidden',
+                            border: '2px solid white'
+                          }}>
+                            {player.photoUrl ? (
+                              <img 
+                                src={player.photoUrl} 
+                                alt={player.username}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  borderRadius: '50%'
+                                }}
+                                onError={(e) => {
+                                  // Fallback to emoji if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = getUserIcon(player.username);
+                                    parent.style.fontSize = '24px';
+                                    parent.style.color = 'white';
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span style={{color: 'white'}}>{getUserIcon(player.username)}</span>
+                            )}
+                          </div>
+                          <div>
+                            <div style={{
+                              fontSize: '16px',
+                              fontWeight: 'bold',
+                              color: '#333',
+                              marginBottom: '2px'
+                            }}>
+                              {player.username}
+                            </div>
+                            <div style={{
+                              fontSize: '14px',
+                              color: '#666'
+                            }}>
+                              Ставка: {player.totalBet.toFixed(2)} TON
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div style={{
+                          backgroundColor: '#f1f3f4',
+                          borderRadius: '8px',
+                          padding: '10px',
+                          marginBottom: '10px'
+                        }}>
+                          <div style={{
+                            fontSize: '12px',
+                            color: '#666',
+                            marginBottom: '5px',
+                            fontWeight: 'bold'
+                          }}>
+                            Подарки в ставке:
+                          </div>
+                          {player.gifts && player.gifts.length > 0 ? (
+                            <div style={{fontSize: '12px', color: '#333'}}>
+                              {player.gifts.map((gift, giftIndex) => (
+                                <div key={giftIndex} style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  marginBottom: '2px'
+                                }}>
+                                  <span>{gift.name}</span>
+                                  <span style={{fontWeight: 'bold'}}>
+                                    {parseFloat(gift.price_ton).toFixed(2)} TON
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{fontSize: '12px', color: '#999'}}>
+                              Нет данных о подарках
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div style={{
+                          backgroundColor: player.color,
+                          color: 'white',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                          fontSize: '14px'
+                        }}>
+                          🎯 Шанс победы: {player.percentage.toFixed(1)}%
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
             {/* Модальное окно выбора подарков */}
             {showGiftSelector && (
@@ -755,6 +998,111 @@ function App() {
                       ✖ Отмена
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+            
+            {/* Модальное окно результатов */}
+            {showWinnerModal && rouletteState.winner && (
+              <div style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: 'rgba(0,0,0,0.8)',
+                zIndex: 1001,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '30px',
+                  borderRadius: '20px',
+                  maxWidth: '400px',
+                  boxShadow: '0 15px 40px rgba(0,0,0,0.4)',
+                  border: '2px solid #4ECDC4',
+                  textAlign: 'center'
+                }}>
+                  <div style={{fontSize: '48px', marginBottom: '20px'}}>🎉</div>
+                  <h2 style={{color: '#333', marginBottom: '15px', fontSize: '24px'}}>Поздравляем!</h2>
+                  <div style={{
+                    backgroundColor: '#e8f8f7',
+                    padding: '15px',
+                    borderRadius: '10px',
+                    marginBottom: '20px',
+                    border: '1px solid #4ECDC4'
+                  }}>
+                    <div style={{fontSize: '20px', color: '#333', fontWeight: 'bold', marginBottom: '10px'}}>
+                      {rouletteState.winner.username}
+                    </div>
+                    <div style={{color: '#666', fontSize: '16px', marginBottom: '15px'}}>
+                      Выиграл рулетку!
+                    </div>
+                    
+                    {rouletteState.winner.wonGifts && rouletteState.winner.wonGifts.length > 0 && (
+                      <div>
+                        <div style={{fontSize: '14px', color: '#333', marginBottom: '10px', fontWeight: 'bold'}}>
+                          Выигранные подарки:
+                        </div>
+                        <div style={{
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          backgroundColor: 'white',
+                          padding: '10px',
+                          borderRadius: '8px',
+                          border: '1px solid #ddd'
+                        }}>
+                          {rouletteState.winner.wonGifts.map((gift, index) => (
+                            <div key={index} style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              padding: '5px 0',
+                              borderBottom: index < rouletteState.winner.wonGifts!.length - 1 ? '1px solid #eee' : 'none'
+                            }}>
+                              <span style={{fontSize: '13px', color: '#333'}}>{gift.name}</span>
+                              <span style={{fontSize: '12px', color: '#666', fontWeight: 'bold'}}>
+                                {parseFloat(gift.price_ton).toFixed(2)} TON
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        
+                        {rouletteState.winner.totalWinValue && (
+                          <div style={{
+                            marginTop: '15px',
+                            padding: '10px',
+                            backgroundColor: '#fff3cd',
+                            borderRadius: '8px',
+                            border: '1px solid #ffeaa7'
+                          }}>
+                            <div style={{fontSize: '16px', color: '#333', fontWeight: 'bold'}}>
+                              Общая стоимость: {rouletteState.winner.totalWinValue} TON
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  
+                  <button 
+                    onClick={() => setShowWinnerModal(false)}
+                    style={{
+                      padding: '12px 30px',
+                      fontSize: '16px',
+                      backgroundColor: '#4ECDC4',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    ✨ Отлично!
+                  </button>
                 </div>
               </div>
             )}

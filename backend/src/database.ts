@@ -17,11 +17,23 @@ const createUsersTable = async () => {
     CREATE TABLE IF NOT EXISTS users (
       id BIGINT PRIMARY KEY,
       username VARCHAR(255),
+      photo_url VARCHAR(500),
       ton_address VARCHAR(255) UNIQUE,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `;
   await pool.query(queryText);
+  
+  // Добавляем колонку photo_url если её нет (для существующих таблиц)
+  try {
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS photo_url VARCHAR(500);
+    `);
+    console.log('✅ Колонка photo_url добавлена в users');
+  } catch (error) {
+    console.log('ℹ️ Колонка photo_url уже существует или произошла ошибка:', error);
+  }
 };
 
 const createGiftsTable = async () => {
@@ -88,13 +100,15 @@ const createBetsTable = async () => {
 
 
 // --- Функции для работы с данными ---
-const findOrCreateUser = async (id: number, username?: string) => {
+const findOrCreateUser = async (id: number, username?: string, photoUrl?: string) => {
   const queryText = `
-    INSERT INTO users (id, username)
-    VALUES ($1, $2)
-    ON CONFLICT (id) DO NOTHING;
+    INSERT INTO users (id, username, photo_url)
+    VALUES ($1, $2, $3)
+    ON CONFLICT (id) DO UPDATE SET 
+      username = EXCLUDED.username,
+      photo_url = EXCLUDED.photo_url;
   `;
-  await pool.query(queryText, [id, username]);
+  await pool.query(queryText, [id, username, photoUrl]);
 };
 
 const getAllGifts = async () => {
@@ -168,6 +182,7 @@ const getBetsForRound = async (roundId: number) => {
         SELECT 
             rb.user_id,
             u.username,
+            u.photo_url,
             g.price_ton,
             g.name as gift_name,
             rb.user_gift_id
@@ -203,6 +218,7 @@ const getRouletteState = async () => {
                 playerMap.set(userId, {
                     userId,
                     username: bet.username,
+                    photoUrl: bet.photo_url,
                     totalBet: 0,
                     gifts: [],
                     userGiftIds: []

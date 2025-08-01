@@ -50,12 +50,12 @@ app.get('/api/store/gifts', async (req: Request, res: Response) => {
 
 // 2. Синхронизация (создание/поиск) пользователя
 app.post('/api/users/sync', async (req: Request, res: Response) => {
-  const { id, username } = req.body;
+  const { id, username, photoUrl } = req.body;
   if (!id) {
     return res.status(400).json({ error: 'User ID is required' });
   }
   try {
-    await findOrCreateUser(id, username);
+    await findOrCreateUser(id, username, photoUrl);
     res.status(200).json({ message: 'User synced successfully' });
   } catch (error) {
     console.error('Error syncing user:', error);
@@ -237,8 +237,9 @@ app.post('/api/roulette/spin', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Недостаточно игроков для запуска' });
         }
         
-        // Генерируем случайное число от 0 до 100
+        // Генерируем случайное число от 0 до 100 и seed для анимации
         const randomNumber = Math.random() * 100;
+        const spinSeed = Math.floor(Math.random() * 360); // Seed для синхронизации анимации
         let currentPercentage = 0;
         let winner = null;
         
@@ -255,15 +256,30 @@ app.post('/api/roulette/spin', async (req: Request, res: Response) => {
             winner = state.players[state.players.length - 1]; // На всякий случай
         }
         
+        // Получаем все подарки из раунда для отображения выигрыша
+        const allGifts = await getBetsForRound(state.roundId);
+        const wonGifts = allGifts.map(bet => ({
+            name: bet.gift_name,
+            price_ton: bet.price_ton
+        }));
+        
+        const totalWinValue = wonGifts.reduce((sum, gift) => sum + parseFloat(gift.price_ton), 0);
+        
         // Завершаем раунд
         await finishRound(state.roundId, winner.userId);
         
         console.log(`🎉 Победитель: ${winner.username} (шанс: ${winner.percentage.toFixed(1)}%, число: ${randomNumber.toFixed(2)})`);
+        console.log(`🎁 Выиграл ${wonGifts.length} подарков на сумму ${totalWinValue.toFixed(2)} TON`);
         
         res.status(200).json({
-            winner,
+            winner: {
+                ...winner,
+                wonGifts,
+                totalWinValue: totalWinValue.toFixed(2)
+            },
             randomNumber: randomNumber.toFixed(2),
-            spinResult: `Победил ${winner.username}!`
+            spinSeed, // Добавляем seed для синхронизации анимации
+            spinResult: `Победил ${winner.username}! Выиграл ${wonGifts.length} подарков на ${totalWinValue.toFixed(2)} TON`
         });
         
     } catch (error) {
