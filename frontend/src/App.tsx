@@ -100,6 +100,8 @@ function App() {
         }
         // Загружаем товары магазина
         await fetchShopGifts();
+        // Загружаем инвентарь пользователя
+        await fetchMyGifts();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Произошла неизвестная ошибка');
       } finally {

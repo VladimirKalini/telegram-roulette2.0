@@ -174,8 +174,8 @@ const seedGifts = async () => {
 };
 
 const getCurrentRound = async () => {
-  // Ищем активный раунд (waiting или countdown)
-  let result = await pool.query("SELECT * FROM roulette_rounds WHERE status IN ('waiting', 'countdown') ORDER BY created_at DESC LIMIT 1");
+  // Ищем активный раунд (waiting, countdown или spinning)
+  let result = await pool.query("SELECT * FROM roulette_rounds WHERE status IN ('waiting', 'countdown', 'spinning') ORDER BY created_at DESC LIMIT 1");
   if (result.rows.length === 0) {
     console.log('📝 Создаем новый раунд - нет активных раундов');
     result = await pool.query("INSERT INTO roulette_rounds (status) VALUES ('waiting') RETURNING *");

@@ -238,10 +238,12 @@ app.get('/api/roulette/state', async (req: Request, res: Response) => {
     }
 });
 
-// 7. Запустить рулетку (для тестирования)
+// 7. Запустить рулетку
 app.post('/api/roulette/spin', async (req: Request, res: Response) => {
     try {
+        console.log('🎲 API /api/roulette/spin вызван!');
         const state = await getRouletteState();
+        console.log(`🎲 Состояние для спина: раунд ${state.roundId}, статус ${state.status}, игроков ${state.players.length}`);
         
         if (state.players.length < 2) {
             return res.status(400).json({ error: 'Недостаточно игроков для запуска' });
