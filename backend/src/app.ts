@@ -63,7 +63,7 @@ app.post('/api/users/sync', async (req: Request, res: Response) => {
   }
 });
 
-// 3. Покупка подарка
+// 3. Покупка подарка (ТЕСТОВЫЙ РЕЖИМ - без проверки TON транзакций)
 app.post('/api/store/buy', async (req: Request, res: Response) => {
     const { userId, giftId, transactionMemo } = req.body;
   
@@ -76,16 +76,26 @@ app.post('/api/store/buy', async (req: Request, res: Response) => {
       if (!gift) {
         return res.status(404).json({ error: 'Gift not found' });
       }
-      const giftPrice = parseFloat(gift.price_ton);
 
-      const transactionFound = await findTransaction(giftPrice, transactionMemo);
-  
-      if (transactionFound) {
-        await grantGiftToUser(userId, giftId);
-        res.status(200).json({ message: `Purchase successful! Gift ${giftId} granted to user ${userId}` });
-      } else {
-        res.status(400).json({ error: 'Transaction not found or invalid' });
-      }
+      // ТЕСТОВЫЙ РЕЖИМ: выдаем подарок без проверки TON транзакции
+      console.log(`🎁 ТЕСТОВАЯ ПОКУПКА: пользователь ${userId} получает подарок ${gift.name} (${gift.price_ton} TON)`);
+      
+      await grantGiftToUser(userId, giftId);
+      res.status(200).json({ 
+        message: `🎁 Тестовая покупка успешна! Подарок "${gift.name}" добавлен в инвентарь пользователя ${userId}`,
+        testMode: true
+      });
+
+      // Для продакшена раскомментировать:
+      // const giftPrice = parseFloat(gift.price_ton);
+      // const transactionFound = await findTransaction(giftPrice, transactionMemo);
+      // if (transactionFound) {
+      //   await grantGiftToUser(userId, giftId);
+      //   res.status(200).json({ message: `Purchase successful! Gift ${giftId} granted to user ${userId}` });
+      // } else {
+      //   res.status(400).json({ error: 'Transaction not found or invalid' });
+      // }
+
     } catch (error) {
       console.error('Error processing purchase:', error);
       res.status(500).json({ error: 'Internal server error' });

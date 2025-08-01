@@ -187,12 +187,14 @@ function App() {
       console.log('Server response:', serverResult);
       
       if (response.ok) {
-        setStatusMessage(`Успех! "${gift.name}" добавлен в ваш инвентарь (тест)`);
+        setStatusMessage(serverResult.message || `🎁 Успех! "${gift.name}" добавлен в ваш инвентарь (тестовый режим)`);
         setDebugInfo(''); // Очищаем DEBUG после покупки
         // Обновляем список товаров в инвентаре
         if (view === 'inventory') {
           await fetchMyGifts();
         }
+        // Также обновляем инвентарь для рулетки
+        await fetchMyGifts();
       } else {
         throw new Error(serverResult.error || 'Ошибка подтверждения покупки на сервере.');
       }
