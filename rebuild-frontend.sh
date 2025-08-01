@@ -1,18 +1,23 @@
 #!/bin/bash
 set -e
 
-echo "=== Пересборка фронтенда с исправленным TON Connect ==="
+echo "=== Пересборка фронтенда с исправленной конфигурацией ==="
 
 # Переходим в папку фронтенда
 cd frontend
 
-# Устанавливаем зависимости (на всякий случай)
+# Очищаем кэш и зависимости
+echo "Очищаем кэш..."
+rm -rf node_modules/.vite
+rm -rf dist
+
+# Устанавливаем зависимости
 echo "Устанавливаем зависимости..."
 npm install
 
-# Собираем проект
+# Собираем проект с дополнительными опциями
 echo "Собираем проект..."
-npm run build
+NODE_OPTIONS="--max-old-space-size=4096" npm run build
 
 # Копируем собранные файлы на сервер
 echo "Копируем файлы на сервер..."
@@ -21,4 +26,4 @@ sudo cp -r dist/* /var/www/telegram-roulette/
 sudo chown -R www-data:www-data /var/www/telegram-roulette
 
 echo "=== Фронтенд пересобран и обновлен! ==="
-echo "Проверьте манифест: https://testsabc.top/tonconnect-manifest.json"
+echo "Проверьте сайт: https://testsabc.top"

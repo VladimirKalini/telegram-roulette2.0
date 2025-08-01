@@ -6,19 +6,32 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 export default defineConfig({
   plugins: [
     react(),
-    nodePolyfills() // <-- Включаем наш новый плагин
+    nodePolyfills({
+      // Исключаем проблемный vm модуль
+      exclude: ['vm'],
+      // Отключаем eval для production
+      globals: {
+        Buffer: true,
+        global: true,
+        process: true,
+      },
+    })
   ],
-  server: { // <-- ДОБАВЬТЕ ЭТУ СЕКЦИЮ
-    host: true, // <-- Это позволит Vite слушать все сетевые интерфейсы
-    allowedHosts: [
-      '.ngrok-free.app', // <-- Это разрешит все поддомены ngrok-free.app
-      // Если ваше приложение работает на каком-то конкретном порту, 
-      // убедитесь, что ngrok запускается с этим же портом.
-      // Например, если ваше приложение на порту 8888, ngrok http 8888
-      // Vite по умолчанию использует 5173.
-      // Если ваш локальный сервер Vite работает на другом порту,
-      // укажите его здесь:
-      // port: 8888, 
-    ],
+  build: {
+    // Исключаем использование eval в production
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: false,
+        drop_debugger: true,
+      },
+    },
+    rollupOptions: {
+      external: ['vm'],
+    },
+  },
+  server: {
+    host: true,
+    allowedHosts: ['.ngrok-free.app'],
   },
 })
