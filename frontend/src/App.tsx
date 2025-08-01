@@ -38,7 +38,7 @@ interface RouletteState {
   timeLeft: number;
   isSpinning: boolean;
   winner?: RoulettePlayer;
-  spinSeed?: number;
+  randomRotation?: number;
 }
 
 function App() {
@@ -331,13 +331,16 @@ function App() {
       
       console.log('🎯 Ставки размещены, обновляем данные...');
       
-      // Обновляем состояние рулетки немедленно
-      await fetchRouletteState();
+      // НЕМЕДЛЕННО обновляем инвентарь чтобы подарки исчезли
       await fetchMyGifts();
+      
+      // Обновляем состояние рулетки
+      await fetchRouletteState();
       
       // Дополнительное обновление через полсекунды для синхронизации с другими клиентами
       setTimeout(async () => {
         await fetchRouletteState();
+        await fetchMyGifts(); // Еще раз обновляем инвентарь
       }, 500);
       
       console.log('🎯 Данные обновлены после ставки');
@@ -410,7 +413,7 @@ function App() {
                 setRouletteState(prev => ({ 
                   ...prev, 
                   isSpinning: true,
-                  spinSeed: result.spinSeed 
+                  randomRotation: result.randomRotation 
                 }));
                 
                 // Ждем завершения анимации
@@ -431,9 +434,15 @@ function App() {
                     setWinnerAnnouncement('');
                   }, 5000);
                   
-                  setTimeout(() => {
-                    fetchRouletteState();
-                    fetchMyGifts();
+                  // Принудительное обновление инвентаря для всех игроков
+                  setTimeout(async () => {
+                    await fetchMyGifts(); // Обновляем инвентарь первым делом
+                    await fetchRouletteState(); // Потом состояние рулетки
+                    
+                    // Дополнительное обновление через секунду
+                    setTimeout(async () => {
+                      await fetchMyGifts();
+                    }, 1000);
                   }, 2000);
                 }, 7000);
               }
@@ -615,7 +624,7 @@ function App() {
                     return `${p.color} ${startPercentage}% ${endPercentage}%`;
                   }).join(', ') + ')',
                 transition: rouletteState.isSpinning ? 'transform 7s cubic-bezier(0.25, 0.1, 0.25, 1.0)' : 'none',
-                transform: rouletteState.isSpinning ? `rotate(${3600 + (rouletteState.spinSeed || 0)}deg)` : 'rotate(0deg)',
+                transform: rouletteState.isSpinning ? `rotate(${rouletteState.randomRotation || 3600}deg)` : 'rotate(0deg)',
                 willChange: rouletteState.isSpinning ? 'transform' : 'auto' // Оптимизация GPU
               }}>
               

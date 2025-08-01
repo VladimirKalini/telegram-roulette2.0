@@ -249,9 +249,15 @@ app.post('/api/roulette/spin', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Недостаточно игроков для запуска' });
         }
         
-        // Генерируем случайное число от 0 до 100 и seed для анимации
+        // Генерируем случайное число от 0 до 100 для определения победителя
         const randomNumber = Math.random() * 100;
-        const spinSeed = Math.floor(Math.random() * 360); // Seed для синхронизации анимации
+        
+        // Генерируем случайный угол поворота от 1800 до 5400 градусов (5-15 оборотов)
+        const minRotation = 1800; // 5 оборотов
+        const maxRotation = 5400; // 15 оборотов  
+        const randomRotation = minRotation + Math.random() * (maxRotation - minRotation);
+        
+        console.log(`🎲 Рандомные значения: число=${randomNumber.toFixed(2)}, поворот=${randomRotation.toFixed(0)}°`);
         let currentPercentage = 0;
         let winner = null;
         
@@ -294,7 +300,7 @@ app.post('/api/roulette/spin', async (req: Request, res: Response) => {
                 totalWinValue: totalWinValue.toFixed(2)
             },
             randomNumber: randomNumber.toFixed(2),
-            spinSeed, // Добавляем seed для синхронизации анимации
+            randomRotation: randomRotation, // Случайный угол поворота для анимации
             spinResult: `Победил ${winner.username}! Выиграл ${wonGifts.length} подарков на ${totalWinValue.toFixed(2)} TON`
         });
         
